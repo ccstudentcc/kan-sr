@@ -1,0 +1,7 @@
+Channels:
+ - conda-forge
+ - defaults
+ - nvidia
+ - pytorch
+Platform: win-64
+Collecting package metadata (repodata.json): ...working... 

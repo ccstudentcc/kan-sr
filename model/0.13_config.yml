@@ -15,7 +15,7 @@ sb_trainable: true
 sp_trainable: true
 state_id: 13
 symbolic.funs_name.0:
-- - '0'
+- - sin
   - exp
   - x
   - '0'

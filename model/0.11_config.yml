@@ -15,18 +15,18 @@ sb_trainable: true
 sp_trainable: true
 state_id: 11
 symbolic.funs_name.0:
-- - sinx
-- - '0'
-symbolic.funs_name.1:
 - - sin
+  - exp
+  - x
   - '0'
-symbolic.funs_name.2:
-- - cos
+  - '0'
+  - '0'
+  - '0'
+symbolic.funs_name.1:
+- - gaussian
 symbolic_enabled: true
 width:
-- - 1
-  - 0
-- - 2
+- - 7
   - 0
 - - 1
   - 0
