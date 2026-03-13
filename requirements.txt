@@ -18,7 +18,7 @@ torchaudio==2.1.2
 feyn==3.4.1
 gplearn==0.4.2
 autora==4.2.0
-autora.theorist.bms
+autora-theorist-bms
 
 # 工具包
 tqdm==4.66.4
