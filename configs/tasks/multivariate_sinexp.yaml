@@ -1,0 +1,66 @@
+task:
+  name: multivariate_sinexp
+  description: y = x2 * exp(sin(pi*x1) + x1^2) 的多变量符号回归统一对比
+
+data:
+  generator: sin_exp
+  n_var: 2
+  ranges: [-4, 4]
+  train_num: 30000
+  test_num: 5000
+  noise:
+    enabled: false
+    kind: gaussian
+    std: 0.05
+
+split:
+  # 该任务直接按生成器给出 train/test，不再二次切分
+  use_generator_split: true
+
+budget:
+  time_budget_seconds: 900
+  per_method:
+    kan:
+      fit_steps_cap: 50
+    gplearn:
+      generations_cap: 5
+    bms:
+      epochs_cap: 50
+    qlattice:
+      n_models_cap: 10
+
+methods:
+  kan:
+    params:
+      width: [2, 2, 1]
+      grid: 4
+      k: 3
+      fit_stages:
+        - opt: LBFGS
+          batch: -1
+          steps: 50
+          lamb: 0.001
+          lamb_entropy: 4.0
+      symbolic:
+        enable_auto_symbolic: false
+
+  gplearn:
+    params:
+      function_set: [add, mul, sin, exp]
+      population_size: 20000
+      generations: 5
+      metric: mse
+      n_jobs: -1
+      random_state_from_run_seed: true
+
+  bms:
+    params:
+      epochs: 50
+      # 与现有 notebook 保持一致：缩窄 ts 以减轻数值不稳定
+      ts: [1.0, 1.01, 1.0201, 1.030301, 1.04060401, 1.0510100501]
+
+  qlattice:
+    params:
+      target: y
+      features: [x1, x2]
+      n_models_to_eval: 10

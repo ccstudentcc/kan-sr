@@ -1,0 +1,66 @@
+task:
+  name: univariate_quadratic
+  description: y = x^2 + x + 1 的单变量符号回归统一对比
+
+data:
+  generator: quadratic
+  n_var: 1
+  ranges: [-10, 10]
+  train_num: 1000
+  test_num: 500
+  noise:
+    enabled: true
+    kind: gaussian
+    std: 0.35
+
+split:
+  # 该任务直接按生成器给出 train/test，不再二次切分
+  use_generator_split: true
+
+budget:
+  time_budget_seconds: 300
+  per_method:
+    kan:
+      fit_steps_cap: 40
+    gplearn:
+      generations_cap: 20
+    bms:
+      epochs_cap: 200
+    qlattice:
+      n_models_cap: 10
+
+methods:
+  kan:
+    params:
+      width: [1, 1]
+      grid: 3
+      k: 3
+      fit_stages:
+        - opt: LBFGS
+          steps: 20
+          lamb: 0.001
+          lamb_entropy: 4.0
+        - opt: LBFGS
+          steps: 20
+          lamb: 0.001
+          lamb_entropy: 4.0
+      symbolic:
+        enable_auto_symbolic: true
+
+  gplearn:
+    params:
+      function_set: [add, mul, sin, cos, abs]
+      population_size: 2000
+      generations: 20
+      metric: mse
+      random_state_from_run_seed: true
+
+  bms:
+    params:
+      epochs: 200
+
+  qlattice:
+    params:
+      target: y
+      features: [x]
+      n_models_to_eval: 10

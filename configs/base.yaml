@@ -1,0 +1,108 @@
+version: 1
+project:
+  name: KAN-Symbolic_Regression
+  objective: unified_reproducible_benchmark
+
+reproducibility:
+  # 统一随机种子列表；每个方法都必须逐个运行
+  seed_list: [42, 43, 44, 45, 46]
+  set_python_random: true
+  set_numpy_random: true
+  set_torch_random: true
+  deterministic_torch: false
+
+experiment:
+  # 最少重复次数，建议保持与 seed_list 长度一致
+  n_repeats: 5
+  save_config_snapshot: true
+  fail_fast: false
+
+split:
+  # 数据划分由同一随机源控制，保证方法间公平
+  train_ratio: 0.67
+  test_ratio: 0.33
+  split_seed_from_run_seed: true
+
+budget:
+  # 公平比较预算：优先按时间预算控制；若某方法不支持再回退到迭代预算
+  fairness_mode: time_budget_first
+  time_budget_seconds: 600
+  per_method_overrides_allowed: true
+
+metrics:
+  regression: [mse, r2]
+  track_runtime_seconds: true
+  track_expression: true
+  track_complexity: true
+
+output:
+  root_dir: results
+  raw_pattern: raw/{task_name}/{method}.csv
+  summary_pattern: summary/{task_name}.csv
+  env_pattern: env/{task_name}.json
+  required_per_run_fields:
+    - task_name
+    - method
+    - seed
+    - train_size
+    - test_size
+    - time_seconds
+    - mse
+    - r2
+    - expression
+    - complexity
+    - status
+    - error_message
+  required_summary_fields:
+    - task_name
+    - method
+    - n_repeats
+    - mse_mean
+    - mse_std
+    - r2_mean
+    - r2_std
+    - time_mean
+    - time_std
+    - success_rate
+
+methods:
+  enabled: [kan, gplearn, bms, qlattice]
+
+  kan:
+    framework: pykan
+    params:
+      width: [1, 1]
+      grid: 3
+      k: 3
+      fit_stages:
+        - opt: LBFGS
+          steps: 20
+          lamb: 0.001
+          lamb_entropy: 4.0
+
+  gplearn:
+    framework: gplearn
+    params:
+      population_size: 2000
+      generations: 20
+      stopping_criteria: 0.01
+      p_crossover: 0.7
+      p_subtree_mutation: 0.1
+      p_hoist_mutation: 0.1
+      p_point_mutation: 0.1
+      max_samples: 0.9
+      tournament_size: 30
+      parsimony_coefficient: 0.01
+
+  bms:
+    framework: autora_theorist_bms
+    params:
+      epochs: 200
+      # 可按任务覆盖；示例保留默认温度序列
+      ts: [1.0, 1.01, 1.0201, 1.030301, 1.04060401]
+
+  qlattice:
+    framework: feyn_qlattice
+    params:
+      n_models_to_eval: 10
+      random_seed_from_run_seed: true
