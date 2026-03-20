@@ -56,14 +56,31 @@ Examples:
 - `fix(data-access): correct query filter logic`
 - `to(experiment): align summary schema checks`
 
-## 3. Body Rules (Optional)
-Body should explain:
+## 3. Body Rules (Conditionally Required)
+Body is optional only for trivial commits (for example typo fixes, pure formatting, or very small docs updates).
+
+Body is required for complex changes, including at least one of:
+
+- multi-file or cross-module changes
+- protocol/schema/check rule updates
+- workflow or execution behavior changes
+- history rewrite, migration, or compatibility-impacting refactors
+
+When Body is required, it should explain:
 
 - Why the change is needed (motivation)
 - What changed compared with previous behavior
 - Important tradeoffs or constraints
 
 Use present tense and keep statements specific.
+
+Recommended mini-template:
+
+```text
+why: <motivation and problem statement>
+change: <key behavior or structure updates>
+impact: <risk/scope/rollback notes>
+```
 
 ## 4. Footer Rules (Optional)
 Footer is used for:
@@ -92,3 +109,4 @@ Closes #123, #245, #992
 - Commit messages must be in English.
 - Include impact scope and risk when changes affect protocol, schema, or workflow checks.
 - Prefer small incremental commits over large mixed commits.
+- For complex changes in this repository, do not omit Body.
