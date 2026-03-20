@@ -1,20 +1,19 @@
-# 日志规范
+# Logging Guidelines
 
-## 1. 日志目标
-- 让一次实验从“输入配置”到“输出结果”全流程可追溯。
+## 1. Logging Goal
+- Make the full experiment flow traceable, from input configuration to output results.
 
-## 2. 输出级别
-- `INFO`：阶段开始/结束、计划数量、输出路径
-- `WARN`：兼容性回退、非阻塞异常
-- `ERROR`：任务失败、配置非法、关键依赖缺失
+## 2. Output Levels
+- `INFO`: stage start/end, plan count, output path
+- `WARN`: compatibility fallback, non-blocking exceptions
+- `ERROR`: task failure, invalid config, missing critical dependencies
 
-## 3. 格式建议
-- 统一结构：`[LEVEL] [task=<name>] [method=<name>] [seed=<n>] message`
-- 脚本至少输出：
-  - 最终 run 数
-  - 产物路径
-  - 失败计数
+## 3. Format Recommendation
+- Unified structure: `[LEVEL] [task=<name>] [method=<name>] [seed=<n>] message`
+- Scripts must output at least:
+  - final run count
+  - artifact path
+  - failure count
 
-## 4. Notebook 与脚本一致性
-- Notebook 中的重要实验结论应保留对应脚本运行记录或参数快照，避免“只见图不见过程”。
-
+## 4. Notebook and Script Consistency
+- Key experimental conclusions in notebooks should retain corresponding script run records or parameter snapshots, to avoid "plots without process".

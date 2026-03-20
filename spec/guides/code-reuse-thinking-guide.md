@@ -1,20 +1,19 @@
-# 代码复用思维指南
+# Code Reuse Thinking Guide
 
-## 1. 复用优先级
-- 优先复用：配置结构、评估字段、结果写出逻辑
-- 次级复用：绘图模板、数据生成工具
-- 最后复用：实验特定临时分析
+## 1. Reuse Priority
+- Highest priority for reuse: configuration structure, evaluation fields, result writing logic
+- Secondary reuse: plotting templates, data generation utilities
+- Last reuse: experiment-specific temporary analysis
 
-## 2. 何时提取公共代码
-- 同一逻辑在第 3 次出现时，必须提取到脚本或模块。
-- 需要跨任务共享的逻辑，不应继续留在单个 Notebook。
+## 2. When to Extract Shared Code
+- When the same logic appears for the third time, it must be extracted into a script or module.
+- Logic shared across tasks should not remain in a single notebook.
 
-## 3. 防止“分叉实现”
-- 每个任务只保留一个权威配置文件（`configs/tasks/<task>.yaml`）
-- 每种结果字段只保留一个权威定义（`EXPERIMENT_PROTOCOL.md` + `spec/experiment/result-governance.md`）
+## 3. Preventing "Forked Implementations"
+- Keep only one authoritative config file per task (`configs/tasks/<task>.yaml`)
+- Keep only one authoritative definition per result field (`EXPERIMENT_PROTOCOL.md` + `spec/experiment/result-governance.md`)
 
-## 4. 实用检查清单
-- 是否存在复制粘贴后仅改常数的代码块？
-- 是否同一指标在不同文件用不同命名？
-- 是否一个改动需要改 3 个以上位置？如果是，考虑抽象公共层。
-
+## 4. Practical Checklist
+- Are there copy-pasted code blocks where only constants changed?
+- Is the same metric named differently across files?
+- Does one change require edits in more than three places? If yes, consider abstracting a shared layer.

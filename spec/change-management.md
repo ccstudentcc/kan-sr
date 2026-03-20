@@ -1,22 +1,21 @@
-# 规范变更管理
+# Specification Change Management
 
-## 1. 状态定义
-- `Adopted`：已在仓库实践中落地并执行
-- `Draft`：规范已定义，但尚未完全落地
-- `Deprecated`：不再推荐使用，保留历史记录
+## 1. Status Definitions
+- `Adopted`: implemented and enforced in repository practice
+- `Draft`: defined but not fully implemented
+- `Deprecated`: no longer recommended, kept for historical reference
 
-## 2. 何时需要更新规范
-- 新增任务类型或方法类型
-- 修改结果字段或输出结构
-- 变更实验公平性策略（预算、数据划分、重复次数）
-- 引入新的执行入口或重构目录结构
+## 2. When Specifications Must Be Updated
+- A new task type or method type is introduced
+- Result fields or output structure are modified
+- Experiment fairness strategy changes (budget, split, repeat count)
+- A new execution entry point is introduced or repository layout is refactored
 
-## 3. 变更提交流程
-1. 在对应 `spec/*/index.md` 更新状态与说明
-2. 更新被影响的规范正文
-3. 在提交说明中列出“影响范围 + 回滚成本 + 风险”
+## 3. Change Submission Workflow
+1. Update status and notes in the corresponding `spec/*/index.md`
+2. Update all impacted specification files
+3. Include "impact scope + rollback cost + risk" in the commit message
 
-## 4. 版本记录建议
-- 重大规范变更建议在文件末尾维护“最后更新日期”
-- 对破坏性变更，建议额外记录迁移说明
-
+## 4. Versioning Recommendations
+- For major spec updates, maintain a "Last Updated" date at the end of the file
+- For breaking changes, add migration notes

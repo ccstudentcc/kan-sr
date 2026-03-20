@@ -1,20 +1,19 @@
-# 跨层思维指南
+# Cross-Layer Thinking Guide
 
-## 1. 统一链路
-任何实验改动都要回答 5 个问题：
-1. 协议层：是否影响公平性/可复现性？
-2. 配置层：是否有可审计参数变更？
-3. 执行层：是否能通过脚本稳定运行？
-4. 结果层：是否落盘为统一字段？
-5. 叙事层：是否能映射到论文/答辩结论？
+## 1. Unified Chain
+Any experiment change must answer these 5 questions:
+1. Protocol layer: does it affect fairness/reproducibility?
+2. Configuration layer: is the parameter change auditable?
+3. Execution layer: can scripts run it reliably?
+4. Result layer: is it persisted using unified fields?
+5. Narrative layer: can it map to thesis/defense conclusions?
 
-## 2. 常见断层
-- 只改 Notebook，不改配置：无法批量复现
-- 只改模型，不改协议：比较不公平
-- 只贴图，不留结果文件：不可审计
+## 2. Common Disconnects
+- Only changing notebooks without changing config: batch reproducibility is impossible
+- Only changing models without changing protocol: comparisons become unfair
+- Only showing figures without keeping result files: unauditable
 
-## 3. 推荐流程
-- 先改 `configs/tasks/*.yaml`
-- 再跑 `scripts/run_experiment_plan.py`
-- 最后更新 Notebook 展示与结论文案
-
+## 3. Recommended Workflow
+- First update `configs/tasks/*.yaml`
+- Then run `scripts/run_experiment_plan.py`
+- Finally update notebook presentations and conclusion text

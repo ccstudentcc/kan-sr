@@ -1,19 +1,18 @@
-# 核心代码质量门禁
+# Core Code Quality Gates
 
-## 1. 脚本层
-- 新增脚本必须支持 `--help`。
-- 参数解析必须有默认值与错误提示。
-- 文件写出必须显式指定编码（建议 `utf-8`）。
+## 1. Script Layer
+- Every new script must support `--help`.
+- Argument parsing must provide defaults and clear error messages.
+- File writes must explicitly specify encoding (recommended: `utf-8`).
 
-## 2. 模型层
-- 模型前向应进行输入维度断言（当前 `KANLinear`/`KAN` 已实践）。
-- 影响数值稳定性的改动必须附带最小验证说明。
+## 2. Model Layer
+- Model forward passes should assert input dimensions (already practiced in `KANLinear`/`KAN`).
+- Changes that affect numerical stability must include a minimal validation note.
 
-## 3. 回归检查（最小集合）
-- 配置加载与合并流程可运行
-- 至少一个任务可成功产出计划文件
-- 新增代码不破坏既有 `efficient_kan` 导出接口
+## 3. Regression Checks (Minimum Set)
+- Config loading and merge flow is runnable.
+- At least one task can successfully produce a plan file.
+- New code does not break existing `efficient_kan` export interfaces.
 
-## 4. 文档同步
-- 新增配置字段或结果字段时，必须同步更新 `EXPERIMENT_PROTOCOL.md` 与 `spec/` 对应文件。
-
+## 4. Documentation Synchronization
+- When adding config fields or result fields, `EXPERIMENT_PROTOCOL.md` and corresponding files in `spec/` must be updated in sync.

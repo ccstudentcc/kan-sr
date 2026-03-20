@@ -1,7 +1,6 @@
-# 思维指南索引
+# Thinking Guide Index
 
-| 指南 | 文件 | 状态 | 目的 |
+| Guide | File | Status | Purpose |
 |---|---|---|---|
-| 跨层思维指南 | `cross-layer-thinking-guide.md` | Draft | 连接“协议-配置-脚本-结果-论文图表” |
-| 代码复用思维指南 | `code-reuse-thinking-guide.md` | Draft | 减少 Notebook 重复代码与隐式分叉 |
-
+| Cross-Layer Thinking Guide | `cross-layer-thinking-guide.md` | Draft | Connects protocol, configuration, scripts, results, and thesis figures |
+| Code Reuse Thinking Guide | `code-reuse-thinking-guide.md` | Draft | Reduces duplicated notebook code and implicit forks |

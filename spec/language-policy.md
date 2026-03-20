@@ -1,23 +1,28 @@
-# 语言与注释规范
+# Language and Comment Policy
 
-## 1. 适用范围
-- `efficient_kan/`、`scripts/`、`verify_install.py` 等代码文件
+## 1. Scope
+- Code files such as `efficient_kan/`, `scripts/`, and `verify_install.py`
 - `notebooks/*.ipynb`
+- `docs/*.md`
+- `spec/*.md` and all nested spec markdown files
 
-## 2. 代码语言规则
-- 代码注释必须使用英文。
-- Docstring 必须使用 Google 风格，且内容为英文。
-- 变量名、函数名、类名、异常信息、日志字段名统一使用英文。
+## 2. Code Language Rules
+- Code comments must be in English.
+- Docstrings must follow Google style and must be in English.
+- Variable names, function names, class names, exception messages, and log field names must be in English.
 
-## 3. 输出与打印规则
-- 终端打印信息（`print`、日志输出）必须使用英文。
-- 结果文件中的字段名与状态值必须使用英文（如 `status=success/fail`）。
+## 3. Output and Print Rules
+- Terminal outputs (`print`, logging output) must be in English.
+- Field names and status values in result files must be in English (for example, `status=success/fail`).
 
-## 4. Notebook 语言规则
-- Notebook 的 Markdown 单元格文字必须使用中文（便于论文写作）。
-- Notebook 代码单元中的注释、变量、函数、输出文本仍遵循英文规则。
+## 4. Notebook Language Rules
+- Text in notebook markdown cells must be in Chinese (for thesis writing).
+- Comments, variables, functions, and output text in notebook code cells must follow English rules.
 
-## 5. 例外与兼容
-- 引用外部原文可保留原语言，但需附简短中文说明（仅 Notebook markdown 允许）。
-- 历史文件不强制一次性重写；新增与改动内容必须遵守本规范。
+## 5. Directory-Level Language Constraints
+- `spec/` documentation is English-only.
+- `docs/` primary language is Chinese.
 
+## 6. Exceptions and Compatibility
+- External quotes may keep original language, but in notebook markdown a short Chinese note is required.
+- Historical files do not need one-shot rewriting, but all new and modified content must comply.

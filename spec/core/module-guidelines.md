@@ -1,22 +1,22 @@
-# 模块设计规范
+# Module Design Guidelines
 
-## 1. 分层职责
-- `efficient_kan/`：模型定义与数学逻辑（如 `KANLinear`、`KAN`）
-- `scripts/`：编排层（读取配置、构建计划、写出结果）
-- `configs/`：参数与协议，不承载执行逻辑
+## 1. Layered Responsibilities
+- `efficient_kan/`: model definitions and mathematical logic (e.g., `KANLinear`, `KAN`)
+- `scripts/`: orchestration layer (read configs, build plans, write outputs)
+- `configs/`: parameters and protocol only, no execution logic
 
-## 2. 接口约束
-- 模块对外接口集中在 `efficient_kan/__init__.py`。
-- 脚本应通过函数组织流程，避免把主要逻辑写在 `if __name__ == "__main__"` 内部。
+## 2. Interface Constraints
+- Public module interfaces are centralized in `efficient_kan/__init__.py`.
+- Scripts should organize workflow through functions and avoid putting primary logic inside `if __name__ == "__main__"`.
 
-## 3. 设计原则
-- 优先简单显式实现，避免过度抽象。
-- 参数传递优先使用配置对象，不使用大量隐式全局变量。
-- 代码注释与 Docstring 使用英文，Docstring 采用 Google 风格。
-- `print` 与日志输出统一使用英文，便于后续自动解析与审计。
+## 3. Design Principles
+- Prefer simple and explicit implementations; avoid over-abstraction.
+- Prefer passing parameters via config objects instead of many implicit global variables.
+- Code comments and docstrings must be in English; docstrings should use Google style.
+- `print` and logging output must be in English to support automated parsing and auditing.
 
-## 4. 扩展规范
-- 新增方法（除 `kan/gplearn/bms/qlattice`）时：
-  - 先更新支持列表与配置校验
-  - 再补充任务配置示例
-  - 最后补文档与结果字段映射
+## 4. Extension Rules
+- When adding a new method (beyond `kan/gplearn/bms/qlattice`):
+  - First update the supported-method list and config validation.
+  - Then add a task configuration example.
+  - Finally update documentation and result-field mapping.

@@ -1,33 +1,35 @@
-# 标准执行流程（Workflow）
+# Standard Execution Workflow
 
-## 1. 需求澄清
-- 明确任务目标：方法改进、协议补齐、结果复现或文档输出。
-- 标注影响范围：`configs/`、`scripts/`、`efficient_kan/`、`notebooks/`、`output/`。
+## 1. Requirement Clarification
+- Define the task goal clearly: method improvement, protocol completion, result reproduction, or documentation output.
+- Mark the impact scope: `configs/`, `scripts/`, `efficient_kan/`, `notebooks/`, `output/`.
 
-## 2. 方案设计
-- 优先选择最小可行改动（MVP），避免跨层大改。
-- 若影响公平比较，先更新协议与配置，再动代码。
+## 2. Solution Design
+- Prioritize minimum viable changes and avoid unnecessary cross-layer refactoring.
+- If fairness is impacted, update protocol and configs before changing code.
 
-## 3. 实施顺序
-1. 更新配置（`configs/base.yaml` 或 `configs/tasks/*.yaml`）
-2. 更新执行脚本（`scripts/`）
-3. 必要时更新模型实现（`efficient_kan/`）
-4. 最后更新 Notebook 展示与 `spec/` 文档
+## 3. Implementation Order
+1. Update configuration (`configs/base.yaml` or `configs/tasks/*.yaml`)
+2. Update execution scripts (`scripts/`)
+3. Update model implementation if required (`efficient_kan/`)
+4. Update notebook presentation and `spec/` documents last
 
-## 4. 运行与验证
-- 最低验证命令：`python scripts/run_experiment_plan.py --task <task-yaml>`
-- 验证通过标准：能稳定产出计划文件，字段完整，失败可见。
+## 4. Run and Validation
+- Minimum validation command: `python scripts/run_experiment_plan.py --task <task-yaml>`
+- Pass criteria: plan files are generated stably, fields are complete, and failures are visible.
 
-## 5. 结果沉淀
-- 将可复现实验输出落盘到 `output/`。
-- 关键结论回写到 `CURRENT_WORK_REFERENCE.md` 或论文图表来源说明。
+## 5. Result Consolidation
+- Save reproducible experiment outputs to `output/`.
+- Write key conclusions back to `CURRENT_WORK_REFERENCE.md` or thesis figure/source notes.
 
-## 6. 提交前同步
-- 同步更新相关规范文件（至少 `spec/experiment/*` 或 `spec/core/*`）。
-- 在提交说明中写明 WHY（为什么改）与影响边界。
+## 6. Pre-Commit Synchronization
+- Update relevant specification files (at least in `spec/experiment/*` or `spec/core/*`).
+- In commit messages, include WHY and impact boundaries.
 
-## 7. 语言合规检查
-- 代码注释与 Docstring：英文（Google 风格）。
-- 打印与日志输出：英文。
-- Notebook Markdown：中文。
-- 执行检查命令：`python scripts/check_language_policy.py`
+## 7. Language Compliance Check
+- Code comments and docstrings: English (Google style).
+- Print and logging outputs: English.
+- Notebook markdown: Chinese.
+- `spec/` documents: English-only.
+- `docs/` documents: primarily Chinese.
+- Run checker: `python scripts/check_language_policy.py`

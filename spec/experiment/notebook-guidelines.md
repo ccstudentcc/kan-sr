@@ -1,21 +1,21 @@
-# Notebook 规范
+# Notebook Specification
 
-## 1. 角色定位
-- Notebook 用于：探索分析、可视化、论文图表生成。
-- 训练计划生成、批量运行与结果汇总应迁移到 `scripts/`（可复用、可自动化）。
-- Notebook 文件统一放在 `notebooks/`，禁止新增到仓库根目录。
+## 1. Role Definition
+- Notebooks are for: exploratory analysis, visualization, and thesis figure generation.
+- Training plan generation, batch execution, and result aggregation should be moved to `scripts/` (reusable and automatable).
+- Notebook files must be placed under `notebooks/`; adding notebooks at the repository root is prohibited.
 
-## 2. 结构要求
-- 每个 Notebook 开头必须包含：任务目标、数据来源、核心配置、随机种子。
-- 关键输出单元必须可重复执行，不依赖手工状态。
-- 禁止把敏感路径、私有 API key 写入单元格。
-- Markdown 单元格文字必须使用中文（用于论文写作与复述）。
-- 代码单元中的注释、变量、函数命名与打印输出必须使用英文。
+## 2. Structure Requirements
+- Each notebook must start with: task objective, data source, core configuration, and random seed.
+- Key output cells must be reproducible and must not depend on manual state.
+- Writing sensitive paths or private API keys in cells is prohibited.
+- Text in Markdown cells must be Chinese (for thesis writing and restatement).
+- Comments, variable names, function names, and printed output in code cells must be English.
 
-## 3. 结果一致性
-- 图表指标命名与协议一致（如 `mse`、`r2`）。
-- 若 Notebook 与 `configs/tasks/*.yaml` 参数不一致，必须在首段显式说明原因。
+## 3. Result Consistency
+- Chart metric names must be consistent with the protocol (for example, `mse`, `r2`).
+- If notebook parameters differ from `configs/tasks/*.yaml`, the reason must be explicitly stated in the opening section.
 
-## 4. 迁移原则
-- 被多个 Notebook 重复的逻辑（数据生成、评估、绘图模板）应提取为脚本或模块。
-- 满足“第 3 次重复出现”的逻辑，必须进入可复用代码层。
+## 4. Migration Principles
+- Logic repeated across multiple notebooks (data generation, evaluation, plotting templates) should be extracted into scripts or modules.
+- Logic that appears for the third time must be moved into the reusable code layer.

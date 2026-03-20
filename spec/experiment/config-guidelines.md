@@ -1,24 +1,23 @@
-# 任务与配置规范
+# Task and Configuration Specification
 
-## 1. 目标
-- 所有实验必须由配置驱动，避免把关键参数散落在 Notebook 代码单元中。
-- 同一任务在不同方法（`kan/gplearn/bms/qlattice`）间保持公平预算与一致数据划分。
+## 1. Objectives
+- All experiments must be configuration-driven to avoid scattering critical parameters across notebook code cells.
+- The same task must keep fair budgets and consistent data splits across methods (`kan/gplearn/bms/qlattice`).
 
-## 2. 配置层级
-- 基线配置：`configs/base.yaml`
-- 任务配置：`configs/tasks/*.yaml`
-- 合并规则：深度合并，子配置覆盖父配置（与 `scripts/run_experiment_plan.py` 一致）。
+## 2. Configuration Hierarchy
+- Base configuration: `configs/base.yaml`
+- Task configuration: `configs/tasks/*.yaml`
+- Merge rule: deep merge, with child config overriding parent config (consistent with `scripts/run_experiment_plan.py`).
 
-## 3. 必填字段
-- 顶层必须包含：`reproducibility`、`experiment`、`methods`、`task`、`data`、`metrics`
-- `methods.enabled` 必须非空，且只允许 `kan/gplearn/bms/qlattice`
-- `experiment.n_repeats` 必须为正整数
+## 3. Required Fields
+- The top level must include: `reproducibility`, `experiment`, `methods`, `task`, `data`, `metrics`
+- `methods.enabled` must be non-empty and may only contain `kan/gplearn/bms/qlattice`
+- `experiment.n_repeats` must be a positive integer
 
-## 4. 变更规则
-- 修改任何 `configs/*.yaml` 后，必须在提交说明中写清：变更原因、影响任务、是否影响可比性。
-- 不允许只给单一方法增加额外预算而不记录；若确需方法特例，必须写入 `budget.per_method`。
+## 4. Change Rules
+- After changing any `configs/*.yaml`, the commit description must state: reason for change, affected tasks, and whether comparability is impacted.
+- Adding extra budget to only one method without documentation is not allowed; method-specific exceptions, if necessary, must be written in `budget.per_method`.
 
-## 5. Seed 与复现
-- 默认使用 `reproducibility.seed_list`；`n_repeats` 应与种子数一致或由脚本显式扩展。
-- 新任务必须声明数据范围、样本规模、噪声设置，不允许“隐式默认值”。
-
+## 5. Seed and Reproducibility
+- Use `reproducibility.seed_list` by default; `n_repeats` should match the seed count or be explicitly expanded by scripts.
+- New tasks must declare data ranges, sample size, and noise settings; implicit default values are not allowed.

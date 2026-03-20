@@ -1,32 +1,34 @@
-# DoD 检查清单（Definition of Done）
+# DoD Checklist (Definition of Done)
 
-## 1. 实验与配置
-- 已明确任务目标与影响范围
-- 已更新并校验相关 `configs/*.yaml`
-- 重复次数与种子策略符合协议（默认 `n_repeats >= 5`）
+## 1. Experiment and Configuration
+- Task goal and impact scope are clearly defined
+- Relevant `configs/*.yaml` are updated and validated
+- Repeat count and seed strategy comply with protocol (default `n_repeats >= 5`)
 
-## 2. 代码与脚本
-- 关键入口可运行（至少可生成计划）
-- 无静默失败（无 `except: pass`）
-- 关键异常包含上下文信息（任务、方法、seed）
+## 2. Code and Scripts
+- Key entry points are runnable (at least plan generation works)
+- No silent failures (`except: pass` is forbidden)
+- Critical exceptions include context (task, method, seed)
 
-## 3. 结果与产物
-- 产物落盘到约定目录（`output/`）
-- 结果字段符合最小规范（raw/summary）
-- 大文件新增有用途说明与来源映射
+## 3. Results and Artifacts
+- Artifacts are written to the agreed directory (`output/`)
+- Result fields satisfy minimum spec requirements (raw/summary)
+- Added large files include purpose and source mapping
 
-## 4. 文档同步
-- 相关 `spec/` 文档已更新
-- 如协议字段变更，`EXPERIMENT_PROTOCOL.md` 已同步
-- 如结论更新，`CURRENT_WORK_REFERENCE.md` 或 README 对应内容已同步
+## 4. Documentation Sync
+- Relevant `spec/` files are updated
+- If protocol fields changed, `EXPERIMENT_PROTOCOL.md` is synchronized
+- If conclusions changed, corresponding content in `CURRENT_WORK_REFERENCE.md` or README is synchronized
 
-## 5. 提交质量
-- 提交说明包含 WHY 与影响范围
-- 未提交无关临时文件或调试输出
-- 变更可回滚且风险可解释
+## 5. Commit Quality
+- Commit message includes WHY and impact scope
+- No unrelated temporary files or debug output are committed
+- Changes are reversible and risks are explainable
 
-## 6. 语言规范
-- 代码注释与 Docstring 为英文，且 Docstring 符合 Google 风格
-- `print`/日志/结果字段为英文
-- Notebook Markdown 为中文
-- 已执行：`python scripts/check_language_policy.py`
+## 6. Language Policy
+- Code comments and docstrings are English, and docstrings follow Google style
+- `print`/logging/result fields are English
+- Notebook markdown is Chinese
+- `spec/` documents are English-only
+- `docs/` documents are primarily Chinese
+- Executed: `python scripts/check_language_policy.py`

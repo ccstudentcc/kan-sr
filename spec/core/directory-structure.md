@@ -1,18 +1,17 @@
-# 核心目录结构规范
+# Core Directory Structure Guidelines
 
-## 1. 代码入口
-- 执行入口在 `scripts/`
-- 模型实现入口在 `efficient_kan/`
+## 1. Code Entry Points
+- Execution entry points are in `scripts/`.
+- Model implementation entry points are in `efficient_kan/`.
 
-## 2. 职责边界
-- `efficient_kan/` 不直接依赖 Notebook 变量状态
-- `scripts/` 不实现深层模型数学细节
-- `configs/` 不出现可执行逻辑
+## 2. Responsibility Boundaries
+- `efficient_kan/` must not directly depend on notebook variable state.
+- `scripts/` must not implement deep model mathematics.
+- `configs/` must not contain executable logic.
 
-## 3. 新增模块约束
-- 新增模块需给出明确用途与调用路径
-- 目录层级不超过 3 层（除数据资产目录）
+## 3. Rules for New Modules
+- Every new module must declare a clear purpose and invocation path.
+- Directory depth must not exceed 3 levels (excluding data asset directories).
 
-## 4. 历史资产保护
-- `model/`、`raw/` 属于数据资产目录，默认只增不改；如需清理，需单独变更说明。
-
+## 4. Historical Asset Protection
+- `model/` and `raw/` are data asset directories and are append-only by default; cleanup requires a separate change note.

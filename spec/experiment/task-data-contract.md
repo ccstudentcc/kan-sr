@@ -1,27 +1,26 @@
-# 任务与数据契约
+# Task and Data Contract
 
-## 1. 任务定义
-- 每个任务必须在 `configs/tasks/<task>.yaml` 中定义。
-- 最小字段：`task.name`、`data.generator`、`data.n_var`、`data.train_num`、`data.test_num`。
+## 1. Task Definition
+- Each task must be defined in `configs/tasks/<task>.yaml`.
+- Minimum fields: `task.name`, `data.generator`, `data.n_var`, `data.train_num`, `data.test_num`.
 
-## 2. 生成器与数据范围
-- `data.generator` 必须是明确可解释的数据生成策略。
-- `data.ranges` 必须给出输入范围，不允许隐式默认。
+## 2. Generator and Data Range
+- `data.generator` must be an explicit and interpretable data generation strategy.
+- `data.ranges` must define input ranges; implicit defaults are not allowed.
 
-## 3. 噪声模型
-- 噪声开关：`data.noise.enabled`
-- 噪声类型：`data.noise.kind`
-- 噪声强度：`data.noise.std`
-- 若启用噪声，必须写清强度来源或任务假设。
+## 3. Noise Model
+- Noise switch: `data.noise.enabled`
+- Noise type: `data.noise.kind`
+- Noise intensity: `data.noise.std`
+- If noise is enabled, the source of intensity or task assumption must be documented.
 
-## 4. 切分与 seed 传递
-- 全局 seed：`reproducibility.seed_list`
-- 切分 seed：由 `split.split_seed_from_run_seed` 决定
-- 方法 seed：由每个方法参数显式继承或映射
+## 4. Split and Seed Propagation
+- Global seed: `reproducibility.seed_list`
+- Split seed: determined by `split.split_seed_from_run_seed`
+- Method seed: explicitly inherited or mapped by each method's parameters
 
-## 5. 校验清单
-- `n_var` 与任务公式输入维度一致
-- `train_num/test_num` 为正整数
-- 噪声开启时 `std > 0`
-- 切分策略在任务间可公平比较
-
+## 5. Validation Checklist
+- `n_var` matches the input dimensionality of the task formula
+- `train_num/test_num` are positive integers
+- When noise is enabled, `std > 0`
+- Split strategy supports fair comparison across tasks

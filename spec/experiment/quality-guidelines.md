@@ -1,34 +1,34 @@
-# 实验质量门禁
+# Experiment Quality Gates
 
-## 1. 提交前最低要求
-- 至少通过一次配置验证与计划生成：
+## 1. Minimum Requirements Before Commit
+- At least one configuration validation and plan generation must pass:
   - `python scripts/run_experiment_plan.py --task <task-yaml>`
-- 记录变更影响：任务范围、指标影响、是否破坏历史可比性。
+- Record change impact: task scope, metric impact, and whether historical comparability is broken.
 
-## 2. 复现实验最低标准
-- 每个任务 `n_repeats >= 5`
-- 固定并记录 `seed_list`
-- 统一预算策略（优先时间预算）
+## 2. Minimum Reproducibility Standard
+- For each task, `n_repeats >= 5`
+- `seed_list` must be fixed and recorded
+- Budget strategy must be unified (time budget preferred)
 
-## 3. 失败处理
-- 不允许吞异常；失败必须写入 `status=fail` 与 `error_message`
-- 单次运行失败不能静默跳过，必须在结果中可见
+## 3. Failure Handling
+- Exception swallowing is not allowed; failures must be written with `status=fail` and `error_message`
+- A failed single run must not be skipped silently and must be visible in results
 
-## 4. 论文产出一致性
-- 论文图表必须能映射到 `output/summary` 的具体文件与字段
-- 任何“手工挑图”必须说明筛选规则
+## 4. Consistency with Thesis Deliverables
+- Thesis figures must map to specific files and fields under `output/summary`
+- Any manual figure selection must include explicit selection rules
 
-## 5. 门禁分级
-- P0（阻断）：
-  - 计划命令退出码必须为 `0`
-  - 必须生成 `*_plan.json` 与 `*_plan.csv`
-  - `plan 行数 = n_repeats * methods_count`
-  - `plan.csv` 必含关键字段（`task_name/method/seed/split_seed/train_num/test_num/budget_time_seconds`）
-- P1（警告）：
-  - Runbook 命令与当前仓库状态不一致
-  - 图表无法回链到结果产物
+## 5. Gate Severity Levels
+- P0 (blocking):
+  - Plan command exit code must be `0`
+  - `*_plan.json` and `*_plan.csv` must be generated
+  - `plan row count = n_repeats * methods_count`
+  - `plan.csv` must include key fields (`task_name/method/seed/split_seed/train_num/test_num/budget_time_seconds`)
+- P1 (warning):
+  - Runbook commands are inconsistent with the current repository state
+  - Figures cannot be traced back to result artifacts
 
-## 6. 最小 DoD
-- 配置、脚本、文档三者一致
-- 关键命令可执行
-- 输出字段符合 `result-schema.md`
+## 6. Minimum DoD
+- Configuration, scripts, and documentation are consistent
+- Key commands are executable
+- Output fields conform to `result-schema.md`

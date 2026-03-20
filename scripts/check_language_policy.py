@@ -1,9 +1,11 @@
-"""Validate repository language policy for code and notebooks.
+"""Validate repository language policy for code, notebooks, and docs.
 
 Policy summary:
 - Python comments, docstrings, and print/log messages must be English (no CJK chars).
 - Notebook markdown cells must be Chinese (must contain at least one CJK char).
 - Notebook code comments and print/log strings should be English (no CJK chars).
+- `spec/` markdown must be English-only (no CJK chars).
+- `docs/` markdown should be Chinese-primary (contains at least one CJK char).
 """
 
 from __future__ import annotations
@@ -51,6 +53,13 @@ def iter_notebooks(paths: Sequence[Path]) -> Iterable[Path]:
                 if ".ipynb_checkpoints" in file_path.parts:
                     continue
                 yield file_path
+
+
+def iter_markdown_files(path: Path) -> Iterable[Path]:
+    """Yield markdown files recursively from a directory."""
+    if not path.exists() or not path.is_dir():
+        return []
+    return path.rglob("*.md")
 
 
 def check_python_comments(path: Path) -> List[str]:
@@ -162,6 +171,26 @@ def check_notebook(path: Path) -> List[str]:
     return issues
 
 
+def check_spec_docs_english(path: Path) -> List[str]:
+    """Ensure spec markdown is English-only (no Han chars)."""
+    issues: List[str] = []
+    for md_file in iter_markdown_files(path):
+        text = md_file.read_text(encoding="utf-8")
+        if has_han(text):
+            issues.append(f"{md_file} contains non-English text in spec/")
+    return issues
+
+
+def check_docs_primary_chinese(path: Path) -> List[str]:
+    """Ensure docs markdown is Chinese-primary (contains Han chars)."""
+    issues: List[str] = []
+    for md_file in iter_markdown_files(path):
+        text = md_file.read_text(encoding="utf-8")
+        if text.strip() and not has_han(text):
+            issues.append(f"{md_file} lacks Chinese text in docs/")
+    return issues
+
+
 def main() -> int:
     """Run checks and return process exit code."""
     parser = argparse.ArgumentParser(description="Check language policy for code and notebooks.")
@@ -182,6 +211,9 @@ def main() -> int:
 
     for nb_file in iter_notebooks(check_paths):
         issues.extend(check_notebook(nb_file))
+
+    issues.extend(check_spec_docs_english(Path("spec")))
+    issues.extend(check_docs_primary_chinese(Path("docs")))
 
     if issues:
         print("[FAIL] Language policy violations detected:")
