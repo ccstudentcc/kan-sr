@@ -13,6 +13,7 @@
 ## 3. Results and Artifacts
 - Artifacts are written to the agreed directory (`output/`)
 - Result fields satisfy minimum spec requirements (raw/summary)
+- `run_id` is consistent across `plan/raw/summary`
 - Added large files include purpose and source mapping
 
 ## 4. Documentation Sync
@@ -31,4 +32,6 @@
 - Notebook markdown is Chinese
 - `spec/` documents are English-only
 - `docs/` documents are primarily Chinese
-- Executed: `python scripts/check_language_policy.py`
+- Executed:
+  - `python scripts/run_checks.py --output-root output` (real outputs), or
+  - `python scripts/run_checks.py --output-root output --allow-placeholder` (placeholder stage)

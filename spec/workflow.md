@@ -16,7 +16,10 @@
 
 ## 4. Run and Validation
 - Minimum validation command: `python scripts/run_experiment_plan.py --task <task-yaml>`
-- Pass criteria: plan files are generated stably, fields are complete, and failures are visible.
+- Pipeline validation chain:
+  - `python scripts/run_experiment.py --plan-json output/<run_id>_plan.json --output-root output`
+  - `python scripts/summarize_results.py --output-root output`
+- Pass criteria: plan/raw/summary are generated stably, fields are complete, and failures are visible.
 
 ## 5. Result Consolidation
 - Save reproducible experiment outputs to `output/`.
@@ -32,5 +35,13 @@
 - Notebook markdown: Chinese.
 - `spec/` documents: English-only.
 - `docs/` documents: primarily Chinese.
-- Run language checker: `python scripts/check_language_policy.py`
-- Run output schema checker: `python scripts/check_output_schema.py --output-root output`
+- Run all checks (real outputs): `python scripts/run_checks.py --output-root output`
+- Run all checks (placeholder outputs): `python scripts/run_checks.py --output-root output --allow-placeholder`
+- Optional single checks:
+  - `python scripts/checks/check_language_policy.py`
+  - `python scripts/checks/check_output_schema.py --output-root output --allow-placeholder`
+  - `python scripts/checks/check_doc_sync.py`
+  - `python scripts/checks/check_pipeline_freshness.py --output-root output`
+  - `python scripts/checks/check_plan_coverage.py --output-root output`
+  - `python scripts/checks/check_result_traceability.py`
+  - `python scripts/checks/check_required_updates.py`

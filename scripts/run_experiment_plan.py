@@ -82,7 +82,9 @@ def resolve_budget(cfg: Dict[str, Any], method: str) -> Tuple[Any, Any]:
     return time_budget, per_method
 
 
-def build_run_plan(cfg: Dict[str, Any], methods: List[str], repeats: int) -> List[Dict[str, Any]]:
+def build_run_plan(
+    cfg: Dict[str, Any], methods: List[str], repeats: int, run_id: str
+) -> List[Dict[str, Any]]:
     experiment = cfg["experiment"]
     data = cfg["data"]
     metrics = cfg["metrics"]
@@ -100,6 +102,7 @@ def build_run_plan(cfg: Dict[str, Any], methods: List[str], repeats: int) -> Lis
             plan.append(
                 {
                     "project_name": cfg.get("project", {}).get("name", "KAN-Symbolic_Regression"),
+                    "run_id": run_id,
                     "experiment_repeats": int(experiment["n_repeats"]),
                     "task_name": task.get("name", "unknown_task"),
                     "method": method,
@@ -142,9 +145,30 @@ def save_plan(plan: List[Dict[str, Any]], out_dir: Path, run_id: str) -> Dict[st
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build reproducible experiment run plan.")
-    parser.add_argument("--base", type=Path, default=Path("configs/base.yaml"), help="Base config path")
-    parser.add_argument("--task", type=Path, required=True, help="Task config path")
-    parser.add_argument("--out-dir", type=Path, default=Path("output"), help="Output directory")
+    parser.add_argument(
+        "--base",
+        "--base-config",
+        dest="base",
+        type=Path,
+        default=Path("configs/base.yaml"),
+        help="Base config path",
+    )
+    parser.add_argument(
+        "--task",
+        "--task-config",
+        dest="task",
+        type=Path,
+        required=True,
+        help="Task config path",
+    )
+    parser.add_argument(
+        "--out-dir",
+        "--output-root",
+        dest="out_dir",
+        type=Path,
+        default=Path("output"),
+        help="Output directory",
+    )
     parser.add_argument("--methods", type=str, default="", help="Override methods, comma separated")
     parser.add_argument("--repeats", type=int, default=-1, help="Override repeats")
     return parser.parse_args()
@@ -163,9 +187,8 @@ def main() -> None:
         repeats = args.repeats
 
     validate_config(cfg)
-    plan = build_run_plan(cfg, methods=methods, repeats=repeats)
-
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    plan = build_run_plan(cfg, methods=methods, repeats=repeats, run_id=run_id)
     paths = save_plan(plan, args.out_dir, run_id)
 
     print(f"[OK] Built run plan with {len(plan)} runs")

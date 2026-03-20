@@ -116,6 +116,56 @@
 
 当前状态：已经具备“统一协议 + 统一配置 + 可执行计划生成”的最小可复现实验骨架，可在此基础上继续实现真实训练执行器与汇总统计。
 
+## 9. 新增进展（2026-03-20）
+
+1. 项目目录与规范体系重构完成：
+- Notebook 已迁移到 `notebooks/`
+- 输出目录统一为 `output/`
+- 新增 `docs/`、`spec/` 规范体系并落地执行
+
+2. 语言规范已工程化：
+- `spec/` 文档统一英文
+- `docs/` 主语言限定为中文
+- 新增自动检查脚本：`scripts/checks/check_language_policy.py`
+
+3. 实验流水线从“仅计划”升级为“计划 -> 原始结果 -> 汇总”：
+- 计划生成：`scripts/run_experiment_plan.py`
+- 占位执行器：`scripts/run_experiment.py`（可复现模拟指标，后续可替换真实训练）
+- 结果汇总：`scripts/summarize_results.py`
+- 输出结构校验：`scripts/checks/check_output_schema.py`
+- 覆盖一致性校验：`scripts/checks/check_plan_coverage.py`
+- 时序新鲜度校验：`scripts/checks/check_pipeline_freshness.py`
+- 结果可追溯校验：`scripts/checks/check_result_traceability.py`
+- 改动-文档联动校验：`scripts/checks/check_required_updates.py`
+- 一键检查入口：`scripts/run_checks.py`
+
+4. 当前阶段性结论（用于论文表述）：
+- 已具备可执行、可检查、可汇总的实验流水线骨架。
+- 真实训练执行器尚未接入（目前 run 阶段为占位模拟），但接口与产物协议已稳定。
+- 下一步重点应转向“真实训练接线 + 指标可信度验证 + 多任务批量复现实验”。
+
+## 10. 证据链最小复现命令（Traceability）
+
+```bash
+python scripts/run_experiment_plan.py --base-config configs/base.yaml --task-config configs/tasks/univariate_quadratic.yaml --output-root output
+python scripts/run_experiment.py --plan-json output/<timestamp>_plan.json --output-root output
+python scripts/summarize_results.py --output-root output
+python scripts/checks/check_language_policy.py
+python scripts/checks/check_output_schema.py --output-root output --allow-placeholder
+python scripts/checks/check_doc_sync.py
+python scripts/checks/check_pipeline_freshness.py --output-root output
+python scripts/checks/check_plan_coverage.py --output-root output
+python scripts/checks/check_result_traceability.py
+python scripts/checks/check_required_updates.py
+python scripts/run_checks.py --output-root output --allow-placeholder
+```
+
+关键产物路径：
+- `output/<timestamp>_plan.json`
+- `output/<timestamp>_plan.csv`
+- `output/raw/<task>/<method>.csv`
+- `output/summary/<task>.csv`
+
 ---
 
-最后更新：2026-03-19
+最后更新：2026-03-20

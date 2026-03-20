@@ -22,8 +22,19 @@ from statistics import mean, stdev
 from typing import Dict, Iterable, List, Tuple
 
 
-REQUIRED_COLUMNS = {"task_name", "method", "mse", "r2", "time_seconds", "status"}
+REQUIRED_COLUMNS = {
+    "run_id",
+    "is_simulated",
+    "task_name",
+    "method",
+    "mse",
+    "r2",
+    "time_seconds",
+    "status",
+}
 SUMMARY_COLUMNS = [
+    "run_id",
+    "is_simulated",
     "task_name",
     "method",
     "n_repeats",
@@ -40,6 +51,12 @@ SUMMARY_COLUMNS = [
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Aggregate raw experiment CSV files.")
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="Optional output root. If set, raw-root=output-root/raw and summary-root=output-root/summary.",
+    )
     parser.add_argument(
         "--raw-root",
         type=Path,
@@ -104,6 +121,14 @@ def aggregate_task(csv_files: List[Path], fallback_task_name: str) -> List[Dict[
     summary_rows: List[Dict[str, str]] = []
     for method in sorted(grouped):
         rows = grouped[method]
+        run_ids = sorted(
+            {str(r.get("run_id", "")).strip() for r in rows if str(r.get("run_id", "")).strip()}
+        )
+        run_id = run_ids[0] if run_ids else ""
+        is_simulated_values = {
+            str(r.get("is_simulated", "")).strip().lower() for r in rows if r.get("is_simulated") is not None
+        }
+        is_simulated = "true" if "true" in is_simulated_values else "false"
         n_repeats = len(rows)
         success_rows = [
             r for r in rows if (r.get("status", "").strip().lower() == "success")
@@ -121,6 +146,8 @@ def aggregate_task(csv_files: List[Path], fallback_task_name: str) -> List[Dict[
         task_name = (rows[0].get("task_name") or fallback_task_name).strip() or fallback_task_name
         summary_rows.append(
             {
+                "run_id": run_id,
+                "is_simulated": is_simulated,
                 "task_name": task_name,
                 "method": method,
                 "n_repeats": str(n_repeats),
@@ -151,6 +178,9 @@ def main() -> None:
     args = parse_args()
     raw_root: Path = args.raw_root
     summary_root: Path = args.summary_root
+    if args.output_root is not None:
+        raw_root = args.output_root / "raw"
+        summary_root = args.output_root / "summary"
 
     task_to_files: Dict[str, List[Path]] = defaultdict(list)
     for task_name, csv_path in iter_task_raw_files(raw_root):
