@@ -1,6 +1,10 @@
 /.venv
 /figures
 /__pycache__
+**/__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.pkl
 model/
 output/*
 !output/README.md

@@ -10,6 +10,7 @@ This directory is the engineering and experiment specification hub for `KAN-Symb
 | Thinking Guides | `guides/index.md` | Cross-layer design and reuse decisions |
 | Repository Layout Specification | `repository-layout.md` | Directory layering, naming rules, and migration strategy |
 | Language and Comment Policy | `language-policy.md` | English code/spec, English outputs, Chinese notebook markdown |
+| Git Commit Convention | `git-commit-convention.md` | Commit header/body/footer format and allowed commit types |
 | Workflow Specification | `workflow.md` | Standard execution flow from request to commit |
 | Change Management | `change-management.md` | Spec status and change workflow |
 | DoD Checklist | `checklists/dod-checklist.md` | Definition of Done and pre-commit checks |
