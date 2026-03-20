@@ -16,7 +16,15 @@ KAN 由 Liu 等人在论文 [KAN: Kolmogorov-Arnold Networks](https://arxiv.org/
 
 ## 📦 仓库内容一览
 
-### [单变量符号回归方法对比](Comparison_of_different_methods_for_SR_univariate.ipynb)
+## 🗂️ 文件管理规范（简要）
+
+- 实验输出统一写入 `output/`
+- 文档说明统一放 `docs/`
+- Notebook 统一放 `notebooks/`
+- 自动化入口统一放 `scripts/`
+- 详细规范见 `spec/repository-layout.md`
+
+### [单变量符号回归方法对比](notebooks/Comparison_of_different_methods_for_SR_univariate.ipynb)
 
 在同一单变量任务上，对比 *KAN*、*遗传编程*、*贝叶斯方法* 和 *QLattice* 的效果。
 
@@ -24,7 +32,7 @@ KAN 由 Liu 等人在论文 [KAN: Kolmogorov-Arnold Networks](https://arxiv.org/
 <img src="img/comparison_univariate.png" alt="" width="900rem">
 </p>
 
-### [多变量符号回归方法对比](Comparison_of_different_methods_for_SR_multivariate.ipynb)
+### [多变量符号回归方法对比](notebooks/Comparison_of_different_methods_for_SR_multivariate.ipynb)
 
 在同一多变量任务上，对比 *KAN*、*遗传编程*、*贝叶斯方法* 和 *QLattice* 的效果。
 
@@ -32,7 +40,7 @@ KAN 由 Liu 等人在论文 [KAN: Kolmogorov-Arnold Networks](https://arxiv.org/
 <img src="img/comparison_multivariate.png" alt="" width="1200rem">
 </p>
 
-### [摆运动实验](Pendulum_Motion.ipynb)
+### [摆运动实验](notebooks/Pendulum_Motion.ipynb)
 
 我们用手机记录了 50 cm 细绳摆动过程中的陀螺仪与加速度计数据。
 
@@ -45,7 +53,7 @@ KAN 由 Liu 等人在论文 [KAN: Kolmogorov-Arnold Networks](https://arxiv.org/
   <img src="img/accelerometer.png" alt="" width="600rem">
 </p>
 
-### [特殊函数实验](Special_function.ipynb)
+### [特殊函数实验](notebooks/Special_function.ipynb)
 
 该实验聚焦正弦积分函数：
 
@@ -69,7 +77,7 @@ $$2.5cos(1.5sin(0.17sin(-1.8x-6.2)+3.9)-0.3)-1.4$$
   <img src="img/kan_sine_integral.png" alt="" width="300rem">
 </p>
 
-### [无监督学习实验](Unsupervised_Learning.ipynb)
+### [无监督学习实验](notebooks/Unsupervised_Learning.ipynb)
 
 该实验尝试求解一个无监督关系发现问题。数据集中共有 7 个变量，满足以下关系：
 
@@ -83,11 +91,11 @@ KAN 需要仅根据变量观测值自动识别这些结构关系。
   <img src="img/kan_unsupervised_2.png" alt="Image 2" width="300rem">
 </p>
 
-### [EfficientKAN 激活可视化](Plotting_Efficient_KAN.ipynb)
+### [EfficientKAN 激活可视化](notebooks/Plotting_Efficient_KAN.ipynb)
 
 该笔记本提供了 EfficientKAN 网络 `.plot()` 方法的基础实现，用于模型可解释性可视化。
 
-### [压缩查找表规模](Reducing_the_lookup_table_size.ipynb)
+### [压缩查找表规模](notebooks/Reducing_the_lookup_table_size.ipynb)
 
 这个实验利用 KAN 的回归能力，将经典多变量牛顿引力定律近似为若干单变量函数的组合，以降低查找表开销。
 

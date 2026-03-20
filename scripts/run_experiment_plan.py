@@ -144,7 +144,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build reproducible experiment run plan.")
     parser.add_argument("--base", type=Path, default=Path("configs/base.yaml"), help="Base config path")
     parser.add_argument("--task", type=Path, required=True, help="Task config path")
-    parser.add_argument("--out-dir", type=Path, default=Path("results"), help="Output directory")
+    parser.add_argument("--out-dir", type=Path, default=Path("output"), help="Output directory")
     parser.add_argument("--methods", type=str, default="", help="Override methods, comma separated")
     parser.add_argument("--repeats", type=int, default=-1, help="Override repeats")
     return parser.parse_args()

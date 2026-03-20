@@ -14,7 +14,7 @@
 
 ## 3. 输出契约
 - `plan` 阶段输出：`*_plan.json`、`*_plan.csv`
-- 后续阶段目标输出：`raw/*.csv`、`summary/*.csv`、`env/*.json`
+- 后续阶段目标输出：`output/raw/*.csv`、`output/summary/*.csv`、`output/env/*.json`
 
 ## 4. 失败策略
 - 配置结构错误：立即失败（fail fast）
@@ -24,4 +24,3 @@
 ## 5. 审计要求
 - 每次运行应记录：任务、方法、seed、预算、时间戳
 - 结果应可回链到配置快照与运行命令
-

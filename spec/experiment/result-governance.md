@@ -1,13 +1,14 @@
 # 结果与产物治理
 
 ## 1. 输出目录约定
-- 统一落盘到 `results/`，推荐结构：
-  - `results/<timestamp>_plan.json`
-  - `results/<timestamp>_plan.csv`
-  - `results/raw/<task>/<method>.csv`
-  - `results/summary/<task>.csv`
-  - `results/env/<task>.json`
-  - `results/config_snapshot/<timestamp>.yaml`
+- 统一落盘到 `output/`，推荐结构：
+  - `output/<timestamp>_plan.json`
+  - `output/<timestamp>_plan.csv`
+  - `output/raw/<task>/<method>.csv`
+  - `output/summary/<task>.csv`
+  - `output/env/<task>.json`
+  - `output/config_snapshot/<timestamp>.yaml`
+- 历史 `results/` 目录保留为 legacy 归档，不作为新增结果目录。
 
 ## 2. 最小字段
 - 计划（plan）至少包含：`task_name`、`method`、`seed`、`split_seed`、`train_num`、`test_num`、`budget_time_seconds`

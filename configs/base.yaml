@@ -36,7 +36,7 @@ metrics:
   track_complexity: true
 
 output:
-  root_dir: results
+  root_dir: output
   raw_pattern: raw/{task_name}/{method}.csv
   summary_pattern: summary/{task_name}.csv
   env_pattern: env/{task_name}.json

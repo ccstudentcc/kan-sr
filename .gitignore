@@ -1,2 +1,8 @@
 /.venv
 /figures
+/__pycache__
+model/
+output/*
+!output/README.md
+results/*
+!results/.gitkeep

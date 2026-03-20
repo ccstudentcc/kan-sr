@@ -15,15 +15,15 @@
 ### 1.1 Plan 阶段（已实现）
 - 实现入口：`scripts/run_experiment_plan.py`
 - 作用：读取 `base + task` 配置并生成运行计划
-- 产物：`results/*_plan.json`、`results/*_plan.csv`
+- 产物：`output/*_plan.json`、`output/*_plan.csv`
 
 ### 1.2 Run 阶段（待统一执行器）
 - 作用：按计划执行方法训练与预测
-- 目标产物：`results/raw/<task>/<method>.csv`
+- 目标产物：`output/raw/<task>/<method>.csv`
 
 ### 1.3 Report 阶段（待统一执行器）
 - 作用：汇总统计与环境记录
-- 目标产物：`results/summary/<task>.csv`、`results/env/<task>.json`
+- 目标产物：`output/summary/<task>.csv`、`output/env/<task>.json`
 
 ## 2. 适用方法
 - `kan`
@@ -67,6 +67,10 @@
 - 行数满足 `n_repeats * method_count`
 - 字段完整且命名一致
 - 失败可见，不允许静默跳过
+
+## 7. 目录规范说明
+- 结果目录统一为 `output/`
+- 历史 `results/` 目录视为 legacy 资产，迁移前保持只读，避免破坏可追溯性
 
 ---
 最后更新：2026-03-19

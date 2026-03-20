@@ -11,10 +11,9 @@
 - 执行时间与命令
 
 ## 3. 存储位置
-- 建议：`results/env/<task_name>.json` 或 `results/env/<timestamp>.json`
+- 建议：`output/env/<task_name>.json` 或 `output/env/<timestamp>.json`
 
 ## 4. 复跑验收
 - 同配置同 seed 可生成同规模计划
 - 指标波动应在可接受阈值内（按任务定义）
 - 若波动异常，需记录可能原因（硬件、依赖、随机性实现差异）
-

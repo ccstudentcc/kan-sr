@@ -15,13 +15,13 @@
 
 ## 4. 标准命令
 ```powershell
-python scripts\run_experiment_plan.py --task configs\tasks\univariate_quadratic.yaml --out-dir results
-python scripts\run_experiment_plan.py --task configs\tasks\multivariate_sinexp.yaml --out-dir results
+python scripts\run_experiment_plan.py --task configs\tasks\univariate_quadratic.yaml --out-dir output
+python scripts\run_experiment_plan.py --task configs\tasks\multivariate_sinexp.yaml --out-dir output
 ```
 
 ## 5. 预期产物
-- `results/<timestamp>_plan.json`
-- `results/<timestamp>_plan.csv`
+- `output/<timestamp>_plan.json`
+- `output/<timestamp>_plan.csv`
 
 ## 6. 快速验收
 - 退出码为 `0`
@@ -32,4 +32,3 @@ python scripts\run_experiment_plan.py --task configs\tasks\multivariate_sinexp.y
 - 配置缺失字段：补齐 `reproducibility/experiment/methods/task/data/metrics`
 - 方法名非法：只允许 `kan/gplearn/bms/qlattice`
 - 重复次数非法：`experiment.n_repeats` 必须为正整数
-

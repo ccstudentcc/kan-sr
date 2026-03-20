@@ -2,7 +2,7 @@
 
 ## 1. 需求澄清
 - 明确任务目标：方法改进、协议补齐、结果复现或文档输出。
-- 标注影响范围：`configs/`、`scripts/`、`efficient_kan/`、Notebook、`results/`。
+- 标注影响范围：`configs/`、`scripts/`、`efficient_kan/`、`notebooks/`、`output/`。
 
 ## 2. 方案设计
 - 优先选择最小可行改动（MVP），避免跨层大改。
@@ -19,10 +19,15 @@
 - 验证通过标准：能稳定产出计划文件，字段完整，失败可见。
 
 ## 5. 结果沉淀
-- 将可复现实验输出落盘到 `results/`。
+- 将可复现实验输出落盘到 `output/`。
 - 关键结论回写到 `CURRENT_WORK_REFERENCE.md` 或论文图表来源说明。
 
 ## 6. 提交前同步
 - 同步更新相关规范文件（至少 `spec/experiment/*` 或 `spec/core/*`）。
 - 在提交说明中写明 WHY（为什么改）与影响边界。
 
+## 7. 语言合规检查
+- 代码注释与 Docstring：英文（Google 风格）。
+- 打印与日志输出：英文。
+- Notebook Markdown：中文。
+- 执行检查命令：`python scripts/check_language_policy.py`

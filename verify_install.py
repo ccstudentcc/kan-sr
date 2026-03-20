@@ -1,7 +1,7 @@
 import importlib
 import pkg_resources
 
-# 包名与要求版本
+# Package name and required version
 requirements = {
     "numpy": "1.24.4",
     "scipy": "1.11.4",
@@ -24,51 +24,51 @@ requirements = {
     "rich": None,
     "pyyaml": None,
     "ipykernel": None,
-    "pykan": None,  # 或 kan
+    "pykan": None,  # or kan
 }
 
 print("="*60)
-print("包安装与版本检测结果：")
+print("Package installation and version check results:")
 print("="*60)
 
 for pkg, req_version in requirements.items():
     mod_name = pkg
-    # 部分包导入名与pip名不同
+    # Some packages have different import names and pip package names
     if pkg == "scikit-learn":
         mod_name = "sklearn"
     if pkg == "pykan":
         mod_name = "kan"
     if pkg == "pyyaml":
-        mod_name = "yaml"  # pyyaml 实际导入名为 yaml
+        mod_name = "yaml"  # pyyaml import name is yaml
     try:
         mod = importlib.import_module(mod_name)
-        # 获取版本
+        # Resolve installed version
         version = getattr(mod, "__version__", None)
         if not version:
             try:
                 version = pkg_resources.get_distribution(pkg).version
             except Exception:
-                version = "未知"
+                version = "unknown"
         if req_version:
-            # 允许 tensorflow/tf/torch 等包带有 +cpu 后缀
+            # Allow +cpu suffix for related packages
             base_version = version.split('+')[0] if version else version
             if pkg in ["tensorflow", "torch", "torchvision", "torchaudio"]:
                 if base_version == req_version:
-                    print(f"✅ {pkg} 已安装，版本匹配: {version}")
+                    print(f"✅ {pkg} installed, version match: {version}")
                 else:
-                    print(f"⚠️  {pkg} 已安装，版本不符: {version} (要求: {req_version})")
+                    print(f"⚠️  {pkg} installed, version mismatch: {version} (required: {req_version})")
             else:
                 if version == req_version:
-                    print(f"✅ {pkg} 已安装，版本匹配: {version}")
+                    print(f"✅ {pkg} installed, version match: {version}")
                 else:
-                    print(f"⚠️  {pkg} 已安装，版本不符: {version} (要求: {req_version})")
+                    print(f"⚠️  {pkg} installed, version mismatch: {version} (required: {req_version})")
         else:
-            print(f"✅ {pkg} 已安装，版本: {version}")
+            print(f"✅ {pkg} installed, version: {version}")
     except ImportError:
-        print(f"❌ {pkg} 未安装")
+        print(f"❌ {pkg} not installed")
     except Exception as e:
-        print(f"⚠️  {pkg} 检查异常: {e}")
+        print(f"⚠️  {pkg} check error: {e}")
 
 print("="*60)
-print("检测完成。")
+print("Check completed.")
 print("="*60)

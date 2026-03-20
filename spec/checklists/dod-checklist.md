@@ -11,7 +11,7 @@
 - 关键异常包含上下文信息（任务、方法、seed）
 
 ## 3. 结果与产物
-- 产物落盘到约定目录（`results/`）
+- 产物落盘到约定目录（`output/`）
 - 结果字段符合最小规范（raw/summary）
 - 大文件新增有用途说明与来源映射
 
@@ -25,3 +25,8 @@
 - 未提交无关临时文件或调试输出
 - 变更可回滚且风险可解释
 
+## 6. 语言规范
+- 代码注释与 Docstring 为英文，且 Docstring 符合 Google 风格
+- `print`/日志/结果字段为英文
+- Notebook Markdown 为中文
+- 已执行：`python scripts/check_language_policy.py`
