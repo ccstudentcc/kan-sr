@@ -32,4 +32,5 @@
 - Notebook markdown: Chinese.
 - `spec/` documents: English-only.
 - `docs/` documents: primarily Chinese.
-- Run checker: `python scripts/check_language_policy.py`
+- Run language checker: `python scripts/check_language_policy.py`
+- Run output schema checker: `python scripts/check_output_schema.py --output-root output`
