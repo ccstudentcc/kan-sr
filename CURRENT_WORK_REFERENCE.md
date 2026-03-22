@@ -130,7 +130,7 @@
 
 3. 实验流水线从“仅计划”升级为“计划 -> 原始结果 -> 汇总 + 环境清单”：
 - 计划生成：`scripts/run_experiment_plan.py`
-- 执行器：`scripts/run_experiment.py`（`kan`、`gplearn` 已接入真实训练；`bms/qlattice` 当前为显式失败映射）
+- 执行器：`scripts/run_experiment.py`（`kan`、`gplearn`、`bms`、`qlattice` 均已接入真实训练）
 - 结果汇总：`scripts/summarize_results.py`
 - 输出结构校验：`scripts/checks/check_output_schema.py`
 - 覆盖一致性校验：`scripts/checks/check_plan_coverage.py`
@@ -142,8 +142,23 @@
 4. 当前阶段性结论（用于论文表述）：
 - 已具备可执行、可检查、可汇总的实验流水线骨架。
 - 已具备 `output/env/<task>.json` 级别的运行环境与追溯元数据产物。
-- 已完成两条真实训练路径（`kan`、`gplearn`），其他方法仍需逐步补齐适配器。
-- 下一步重点应转向“真实训练接线 + 指标可信度验证 + 多任务批量复现实验”。
+- 四条真实训练路径（`kan`、`gplearn`、`bms`、`qlattice`）均可执行。
+- 下一步重点应转向“指标可信度验证 + 多任务批量复现实验 + 结果分析”。
+
+## 11. 新增进展（2026-03-22）
+
+1. `complexity` 指标统一口径：
+- `scripts/run_experiment.py` 中四种方法全部改为按表达式 SymPy 节点数计算复杂度。
+- 解析不安全或失败时返回 `1`，避免不同方法使用不一致的复杂度定义。
+
+2. 已按最新重复次数配置重跑实验：
+- `configs/base.yaml` 当前 `experiment.n_repeats: 1`
+- 计划文件：`output/plan/20260322_175236_plan.json`（4 runs）
+- raw 结果：`output/raw/univariate_quadratic/{kan,gplearn,bms,qlattice}.csv`
+
+3. 当前校验状态：
+- `check_language_policy`、`check_output_schema`、`check_doc_sync`、`check_pipeline_freshness`、`check_plan_coverage`、`check_result_traceability` 已通过
+- `run_checks.py` 中仅 `check_required_updates` 依赖文档同步；本次更新即用于满足该门禁
 
 ## 10. 证据链最小复现命令（Traceability）
 

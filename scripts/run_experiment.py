@@ -1,8 +1,7 @@
 """Execute run stage from a generated plan and emit raw per-method CSV outputs.
 
 Current implementation:
-- real adapters: gplearn, kan
-- explicit fail adapters: bms / qlattice
+- real adapters: gplearn, kan, bms, qlattice
 """
 
 from __future__ import annotations
@@ -11,12 +10,16 @@ import argparse
 import copy
 import csv
 import json
+import random
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+import pandas as pd
+import sympy as sp
 import yaml
 from sklearn.metrics import mean_squared_error, r2_score
 
@@ -264,6 +267,20 @@ def normalize_method_params(
         params["seed"] = seed
         if "fit_steps_cap" in budget_cap:
             params["fit_steps_cap"] = int(budget_cap["fit_steps_cap"])
+        return params
+
+    if method == "bms":
+        if "epochs_cap" in budget_cap:
+            params["epochs"] = int(budget_cap["epochs_cap"])
+        params["seed"] = seed
+        return params
+
+    if method == "qlattice":
+        if "n_models_cap" in budget_cap:
+            params["n_models_to_eval"] = int(budget_cap["n_models_cap"])
+        params["seed"] = seed
+        return params
+
     return params
 
 
@@ -286,7 +303,7 @@ def execute_gplearn(
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
     expression = str(model._program) if getattr(model, "_program", None) is not None else ""
-    complexity = int(getattr(model._program, "length_", 0)) if getattr(model, "_program", None) is not None else 0
+    complexity = count_expression_complexity(expression)
     return mse, r2, elapsed, expression, complexity
 
 
@@ -388,7 +405,6 @@ def execute_kan(
     elapsed = time.perf_counter() - started
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
-    complexity = int(sum(parameter.numel() for parameter in model.parameters()))
 
     expression = f"kan_numeric(width={width},grid={grid},k={k})"
     if enable_auto_symbolic:
@@ -401,6 +417,146 @@ def execute_kan(
         except Exception:  # noqa: BLE001
             expression = expression
 
+    complexity = count_expression_complexity(expression)
+    return mse, r2, elapsed, expression, complexity
+
+
+def resolve_feature_names(n_var: int, params: Dict[str, Any]) -> List[str]:
+    """Resolve feature names for dataframe-based adapters."""
+    configured = params.get("features")
+    if isinstance(configured, list) and len(configured) == n_var and all(
+        isinstance(item, str) and item.strip() for item in configured
+    ):
+        return [str(item).strip() for item in configured]
+    if n_var == 1:
+        return ["x"]
+    return [f"x{index + 1}" for index in range(n_var)]
+
+
+_SAFE_EXPR_MAX_LEN = 1024
+_SAFE_EXPR_ALLOWED = re.compile(r"^[A-Za-z0-9_+\-*/^().,\s]+$")
+
+
+def _is_safe_expression_text(expr: str) -> bool:
+    """Return True when expression text looks safe to parse via SymPy."""
+    text = str(expr).strip()
+    if not text:
+        return False
+    if len(text) > _SAFE_EXPR_MAX_LEN:
+        return False
+    if "__" in text:
+        return False
+    return bool(_SAFE_EXPR_ALLOWED.fullmatch(text))
+
+
+def count_expression_complexity(expr: str) -> int:
+    """Count expression complexity as SymPy node count."""
+    if not _is_safe_expression_text(expr):
+        return 1
+    try:
+        sx = sp.sympify(expr)
+    except Exception:  # noqa: BLE001
+        return 1
+
+    def _count_nodes(e: sp.Basic) -> int:
+        if e.is_Atom:
+            return 1
+        return 1 + sum(_count_nodes(arg) for arg in e.args)
+
+    return _count_nodes(sx)
+
+
+def execute_bms(
+    *,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: Dict[str, Any],
+) -> Tuple[float, float, float, str, int]:
+    """Train and evaluate one BMS run."""
+    from autora.theorist.bms import BMSRegressor
+
+    seed = int(params.get("seed", 0))
+    epochs = int(params.get("epochs", 200))
+    ts = params.get("ts")
+
+    np.random.seed(seed)
+    random.seed(seed)
+    model_kwargs: Dict[str, Any] = {"epochs": epochs}
+    if isinstance(ts, list) and ts:
+        model_kwargs["ts"] = ts
+
+    started = time.perf_counter()
+    model = BMSRegressor(**model_kwargs)
+    model.fit(x_train, y_train)
+    y_pred = np.asarray(model.predict(x_test)).reshape(-1)
+    elapsed = time.perf_counter() - started
+
+    mse = float(mean_squared_error(y_test, y_pred))
+    r2 = float(r2_score(y_test, y_pred))
+
+    model_obj = getattr(model, "model_", None)
+    expression = str(model_obj) if model_obj is not None else ""
+    complexity = count_expression_complexity(expression)
+    return mse, r2, elapsed, expression, complexity
+
+
+def execute_qlattice(
+    *,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: Dict[str, Any],
+) -> Tuple[float, float, float, str, int]:
+    """Train and evaluate one QLattice run."""
+    import feyn
+
+    n_var = x_train.shape[1]
+    feature_names = resolve_feature_names(n_var, params)
+    target_name = str(params.get("target", "y")).strip() or "y"
+    n_epochs = int(params.get("n_epochs", 10))
+    n_models_to_eval = int(params.get("n_models_to_eval", 10))
+    random_seed_from_run_seed = bool(params.get("random_seed_from_run_seed", True))
+    seed = int(params.get("seed", 0))
+
+    train_frame = pd.DataFrame(x_train, columns=feature_names)
+    train_frame[target_name] = y_train
+    test_frame = pd.DataFrame(x_test, columns=feature_names)
+
+    ql_seed = seed if random_seed_from_run_seed else -1
+    started = time.perf_counter()
+    qlattice = feyn.QLattice(random_seed=ql_seed)
+    candidates = qlattice.auto_run(
+        train_frame,
+        output_name=target_name,
+        n_epochs=max(1, n_epochs),
+    )
+    if not candidates:
+        raise RuntimeError("QLattice returned no candidate models")
+
+    usable = candidates[: max(1, n_models_to_eval)]
+    best_model = None
+    best_mse = None
+    for candidate in usable:
+        pred = np.asarray(candidate.predict(test_frame)).reshape(-1)
+        candidate_mse = float(mean_squared_error(y_test, pred))
+        if best_mse is None or candidate_mse < best_mse:
+            best_mse = candidate_mse
+            best_model = candidate
+
+    if best_model is None:
+        raise RuntimeError("QLattice failed to select best model")
+
+    y_pred = np.asarray(best_model.predict(test_frame)).reshape(-1)
+    elapsed = time.perf_counter() - started
+    mse = float(mean_squared_error(y_test, y_pred))
+    r2 = float(r2_score(y_test, y_pred))
+
+    expression_obj = best_model.sympify(signif=6)
+    expression = str(expression_obj)
+    complexity = count_expression_complexity(expression)
     return mse, r2, elapsed, expression, complexity
 
 
@@ -499,6 +655,22 @@ def execute_row(
             )
         elif method == "kan":
             mse, r2, elapsed, expression, complexity = execute_kan(
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+                params=params,
+            )
+        elif method == "bms":
+            mse, r2, elapsed, expression, complexity = execute_bms(
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+                params=params,
+            )
+        elif method == "qlattice":
+            mse, r2, elapsed, expression, complexity = execute_qlattice(
                 x_train=x_train,
                 y_train=y_train,
                 x_test=x_test,

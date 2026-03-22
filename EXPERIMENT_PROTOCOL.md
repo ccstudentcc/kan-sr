@@ -17,11 +17,11 @@
 - 作用：读取 `base + task` 配置并生成运行计划
 - 产物：`output/plan/*_plan.json`、`output/plan/*_plan.csv`
 
-### 1.2 Run 阶段（已实现真实执行骨架）
+### 1.2 Run 阶段（已实现真实执行）
 - 实现入口：`scripts/run_experiment.py`
 - 作用：按计划逐行执行方法适配器并输出 raw 结果
 - 产物：`output/raw/<task>/<method>.csv`
-- 当前状态：`kan`、`gplearn` 为真实训练与评估路径；`bms/qlattice` 暂为显式失败映射（不再伪造成功）
+- 当前状态：`kan`、`gplearn`、`bms`、`qlattice` 均为真实训练与评估路径
 
 ### 1.3 Report 阶段（已实现 summary + env）
 - 实现入口：`scripts/summarize_results.py`
@@ -62,6 +62,11 @@
 - summary：`mse_mean/std`、`r2_mean/std`、`time_mean/std`、`success_rate`
 - env：`schema_version`、`task_name`、`run_id`、`run_ids`、`generated_at_utc`、`python_version`、`platform`、`is_simulated`、`methods`、`n_methods`、`raw_files`
 
+### 4.3 complexity 口径（当前生效）
+- 统一定义：`complexity = SymPy 解析后表达式语法树节点总数`
+- 安全与容错：表达式不安全或无法解析时返回 `1`
+- 适用范围：`kan`、`gplearn`、`bms`、`qlattice` 全部使用同一口径
+
 ## 5. 命名统一
 - 协议统一使用 `train_num/test_num`
 - 若出现 `train_size/test_size`，视为同义映射，禁止并行混用
@@ -73,14 +78,14 @@
 - 字段完整且命名一致
 - 失败可见，不允许静默跳过
 - `python scripts/checks/check_language_policy.py` 通过
-- `python scripts/checks/check_output_schema.py --output-root output --allow-placeholder` 通过（当前阶段）
+- `python scripts/checks/check_output_schema.py --output-root output` 通过
 - `python scripts/checks/check_doc_sync.py` 通过
 - `python scripts/checks/check_pipeline_freshness.py --output-root output` 通过
 - `python scripts/checks/check_plan_coverage.py --output-root output` 通过
 - `python scripts/checks/check_result_traceability.py` 通过
 - `python scripts/checks/check_required_updates.py` 通过
 - `output/env/<task>.json` 存在且与 summary 任务一一对应
-- `python scripts/run_checks.py --output-root output --allow-placeholder` 通过（当前阶段）
+- `python scripts/run_checks.py --output-root output` 通过
 
 ## 7. 目录规范说明
 - 结果目录统一为 `output/`
