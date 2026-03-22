@@ -185,6 +185,30 @@
 4. 检查脚本复杂函数拆分：
 - `scripts/checks/check_output_schema.py` 将 `validate_env_json` 拆分为身份、运行时、方法、原始文件四类校验函数。
 
+## 13. 双任务全链回归验收（2026-03-22）
+
+1. 回归执行范围：
+- 任务 A：`configs/tasks/univariate_quadratic.yaml`
+- 任务 B：`configs/tasks/multivariate_sinexp.yaml`
+- 两个任务均执行完整链路：`plan -> run -> summarize -> run_checks`
+
+2. 本轮关键 run_id：
+- `univariate_quadratic`：`20260322_192250`
+- `multivariate_sinexp`：`20260322_192436`
+
+3. 回归结果摘要：
+- `univariate_quadratic`：`kan/gplearn/bms/qlattice` 全部 `success`
+- `multivariate_sinexp`：`bms/qlattice` 为 `success`，`kan/gplearn` 为 `fail`
+- 失败均已写入 raw 文件并带 `error_message`，满足“失败可见、不可静默跳过”约束
+
+4. 质量门状态：
+- 每个任务完成后均执行 `python scripts/run_checks.py --output-root output`
+- 本轮两次全量检查均通过（language/schema/doc-sync/freshness/coverage/traceability/required-updates）
+
+5. 已观察到的运行信号：
+- 多变量任务中出现 `Intel MKL ERROR` 与 `lstsq failed` 运行信息
+- 当前策略：保持失败可见并纳入回归记录，后续单独针对多变量稳定性做参数与数值策略优化
+
 ## 10. 证据链最小复现命令（Traceability）
 
 ```bash
