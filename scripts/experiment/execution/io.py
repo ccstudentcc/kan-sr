@@ -7,21 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-
-REQUIRED_OUTPUT_FIELDS = [
-    "run_id",
-    "is_simulated",
-    "task_name",
-    "method",
-    "seed",
-    "mse",
-    "r2",
-    "time_seconds",
-    "expression",
-    "complexity",
-    "status",
-    "error_message",
-]
+from ..shared.contracts import RAW_OUTPUT_FIELDS
 
 
 def load_plan(plan_path: Path) -> List[Dict[str, Any]]:
@@ -81,7 +67,7 @@ def write_grouped_raw(rows: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
         target_csv = target_dir / f"{method}.csv"
 
         with target_csv.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=REQUIRED_OUTPUT_FIELDS)
+            writer = csv.DictWriter(f, fieldnames=list(RAW_OUTPUT_FIELDS))
             writer.writeheader()
             writer.writerows(records)
 

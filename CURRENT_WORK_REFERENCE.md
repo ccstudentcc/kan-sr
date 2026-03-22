@@ -165,6 +165,26 @@
 - `check_language_policy`、`check_output_schema`、`check_doc_sync`、`check_pipeline_freshness`、`check_plan_coverage`、`check_result_traceability` 已通过
 - `run_checks.py` 中仅 `check_required_updates` 依赖文档同步；本次更新即用于满足该门禁
 
+## 12. 脚本优化进展（2026-03-22）
+
+1. 入口兼容性修复：
+- `scripts/run_experiment.py`、`scripts/run_experiment_plan.py`、`scripts/summarize_results.py` 已支持三种调用方式：
+  - `python scripts/<entry>.py`
+  - `python -m scripts.<entry_module>`
+  - `import scripts.<entry_module>`
+
+2. 契约与工具去重：
+- 新增 `scripts/experiment/shared/contracts.py` 作为 plan/raw/summary/env 字段契约的统一来源。
+- `scripts/experiment/execution/io.py` 与 `scripts/experiment/reporting/summarizer.py` 改为引用共享契约。
+- 新增 `scripts/checks/common.py`，统一 `latest_plan_json` 逻辑，去除 `check_output_schema`、`check_pipeline_freshness`、`check_plan_coverage` 的重复实现。
+
+3. 执行器可维护性优化：
+- `scripts/experiment/execution/adapters.py` 新增方法注册表，执行分发改为注册表模式。
+- `scripts/experiment/execution/app.py` 的 `execute_row` 逻辑拆为多个小函数，降低复杂度与修改风险。
+
+4. 检查脚本复杂函数拆分：
+- `scripts/checks/check_output_schema.py` 将 `validate_env_json` 拆分为身份、运行时、方法、原始文件四类校验函数。
+
 ## 10. 证据链最小复现命令（Traceability）
 
 ```bash

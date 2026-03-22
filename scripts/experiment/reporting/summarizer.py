@@ -25,31 +25,11 @@ from pathlib import Path
 from statistics import mean, stdev
 from typing import Dict, Iterable, List, Tuple
 
+from ..shared.contracts import RAW_COLUMNS_FOR_SUMMARY, SUMMARY_OUTPUT_FIELDS
 
-REQUIRED_COLUMNS = {
-    "run_id",
-    "is_simulated",
-    "task_name",
-    "method",
-    "mse",
-    "r2",
-    "time_seconds",
-    "status",
-}
-SUMMARY_COLUMNS = [
-    "run_id",
-    "is_simulated",
-    "task_name",
-    "method",
-    "n_repeats",
-    "mse_mean",
-    "mse_std",
-    "r2_mean",
-    "r2_std",
-    "time_mean",
-    "time_std",
-    "success_rate",
-]
+
+REQUIRED_COLUMNS = set(RAW_COLUMNS_FOR_SUMMARY)
+SUMMARY_COLUMNS = list(SUMMARY_OUTPUT_FIELDS)
 
 
 def parse_args() -> argparse.Namespace:

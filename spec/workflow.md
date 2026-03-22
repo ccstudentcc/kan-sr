@@ -17,7 +17,7 @@
 ## 4. Run and Validation
 - Minimum validation command: `python scripts/run_experiment_plan.py --task <task-yaml>`
 - Pipeline validation chain:
-  - `python scripts/run_experiment.py --plan-json output/<run_id>_plan.json --output-root output`
+  - `python scripts/run_experiment.py --plan-json output/plan/<run_id>_plan.json --output-root output`
   - `python scripts/summarize_results.py --output-root output`
 - Pass criteria: plan/raw/summary are generated stably, fields are complete, and failures are visible.
 

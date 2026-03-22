@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from ..shared.constants import SUPPORTED_METHODS
-from .adapters import execute_bms, execute_gplearn, execute_kan, execute_qlattice
+from .adapters import get_method_adapter
 from .io import fail_row, load_plan, write_grouped_raw
 from .models import TaskRuntimeConfig
 from .runtime import (
@@ -18,6 +18,69 @@ from .runtime import (
     resolve_run_id,
     resolve_task_runtime_config,
 )
+
+
+def parse_plan_row_identity(plan_row: Dict[str, Any], *, default_run_id: str) -> tuple[str, str, str]:
+    """Parse task/method/run identity fields from one plan row."""
+    task_name = str(plan_row.get("task_name", "unknown_task")).strip() or "unknown_task"
+    method = str(plan_row.get("method", "unknown_method")).strip() or "unknown_method"
+    run_id = resolve_run_id(plan_row, fallback=default_run_id)
+    return task_name, method, run_id
+
+
+def parse_plan_row_numbers(plan_row: Dict[str, Any]) -> tuple[int, int, int]:
+    """Parse row numeric fields needed for execution."""
+    seed = parse_seed(plan_row.get("seed"))
+    train_num = parse_positive_int(plan_row.get("train_num"), "train_num")
+    test_num = parse_positive_int(plan_row.get("test_num"), "test_num")
+    return seed, train_num, test_num
+
+
+def resolve_cached_task_config(
+    task_name: str,
+    task_cache: Dict[str, TaskRuntimeConfig],
+) -> TaskRuntimeConfig:
+    """Resolve and cache task runtime config."""
+    task_cfg = task_cache.get(task_name)
+    if task_cfg is None:
+        task_cfg = resolve_task_runtime_config(task_name)
+        task_cache[task_name] = task_cfg
+    return task_cfg
+
+
+def execute_method_with_dataset(
+    *,
+    method: str,
+    task_cfg: TaskRuntimeConfig,
+    plan_row: Dict[str, Any],
+    seed: int,
+    train_num: int,
+    test_num: int,
+) -> tuple[float, float, float, str, int]:
+    """Execute one method adapter with generated dataset."""
+    adapter = get_method_adapter(method)
+    if adapter is None:
+        raise NotImplementedError(f"method adapter not implemented yet: {method}")
+
+    x_train, y_train, x_test, y_test = generate_dataset(
+        task_cfg=task_cfg,
+        seed=seed,
+        train_num=train_num,
+        test_num=test_num,
+    )
+    params = normalize_method_params(
+        method,
+        default_params=task_cfg.methods.get(method, {}),
+        budget_raw=str(plan_row.get("budget_method_cap", "")),
+        seed=seed,
+    )
+    return adapter(
+        x_train=x_train,
+        y_train=y_train,
+        x_test=x_test,
+        y_test=y_test,
+        params=params,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,9 +114,7 @@ def execute_row(
     task_cache: Dict[str, TaskRuntimeConfig],
 ) -> Dict[str, Any]:
     """Execute one plan row and map to raw schema row."""
-    task_name = str(plan_row.get("task_name", "unknown_task")).strip() or "unknown_task"
-    method = str(plan_row.get("method", "unknown_method")).strip() or "unknown_method"
-    run_id = resolve_run_id(plan_row, fallback=default_run_id)
+    task_name, method, run_id = parse_plan_row_identity(plan_row, default_run_id=default_run_id)
 
     if method not in SUPPORTED_METHODS:
         return fail_row(
@@ -65,9 +126,7 @@ def execute_row(
         )
 
     try:
-        seed = parse_seed(plan_row.get("seed"))
-        train_num = parse_positive_int(plan_row.get("train_num"), "train_num")
-        test_num = parse_positive_int(plan_row.get("test_num"), "test_num")
+        seed, train_num, test_num = parse_plan_row_numbers(plan_row)
     except ValueError as exc:
         return fail_row(
             run_id=run_id,
@@ -78,10 +137,7 @@ def execute_row(
         )
 
     try:
-        task_cfg = task_cache.get(task_name)
-        if task_cfg is None:
-            task_cfg = resolve_task_runtime_config(task_name)
-            task_cache[task_name] = task_cfg
+        task_cfg = resolve_cached_task_config(task_name, task_cache)
     except (FileNotFoundError, ValueError) as exc:
         return fail_row(
             run_id=run_id,
@@ -92,52 +148,14 @@ def execute_row(
         )
 
     try:
-        x_train, y_train, x_test, y_test = generate_dataset(
+        mse, r2, elapsed, expression, complexity = execute_method_with_dataset(
+            method=method,
             task_cfg=task_cfg,
+            plan_row=plan_row,
             seed=seed,
             train_num=train_num,
             test_num=test_num,
         )
-        params = normalize_method_params(
-            method,
-            default_params=task_cfg.methods.get(method, {}),
-            budget_raw=str(plan_row.get("budget_method_cap", "")),
-            seed=seed,
-        )
-        if method == "gplearn":
-            mse, r2, elapsed, expression, complexity = execute_gplearn(
-                x_train=x_train,
-                y_train=y_train,
-                x_test=x_test,
-                y_test=y_test,
-                params=params,
-            )
-        elif method == "kan":
-            mse, r2, elapsed, expression, complexity = execute_kan(
-                x_train=x_train,
-                y_train=y_train,
-                x_test=x_test,
-                y_test=y_test,
-                params=params,
-            )
-        elif method == "bms":
-            mse, r2, elapsed, expression, complexity = execute_bms(
-                x_train=x_train,
-                y_train=y_train,
-                x_test=x_test,
-                y_test=y_test,
-                params=params,
-            )
-        elif method == "qlattice":
-            mse, r2, elapsed, expression, complexity = execute_qlattice(
-                x_train=x_train,
-                y_train=y_train,
-                x_test=x_test,
-                y_test=y_test,
-                params=params,
-            )
-        else:
-            raise NotImplementedError(f"method adapter not implemented yet: {method}")
     except Exception as exc:  # noqa: BLE001
         return fail_row(
             run_id=run_id,

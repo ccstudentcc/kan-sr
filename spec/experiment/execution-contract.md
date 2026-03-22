@@ -5,9 +5,9 @@
 
 Current implementation status:
 - `plan`: implemented (`scripts/run_experiment_plan.py`)
-- `run`: implemented as adapter executor (`scripts/run_experiment.py`) with real `gplearn` path and explicit fail mapping for unimplemented methods
+- `run`: implemented as adapter executor (`scripts/run_experiment.py`) with real adapters for `kan`, `gplearn`, `bms`, and `qlattice`
 - `aggregate/persist`: implemented for `summary` and `env` artifacts (`scripts/summarize_results.py`)
-- `evaluate`: partial implementation via per-adapter metrics, full multi-method evaluator still pending
+- `evaluate`: implemented via per-adapter metrics (`mse`, `r2`, runtime, expression, complexity)
 
 ## 2. Input Contract
 - Input 1: `configs/base.yaml`
@@ -16,7 +16,8 @@ Current implementation status:
 
 ## 3. Output Contract
 - `plan` stage outputs: `output/plan/*_plan.json`, `output/plan/*_plan.csv`
-- Target outputs for later stages: `output/raw/*.csv`, `output/summary/*.csv`, `output/env/*.json`
+- `run` stage outputs: `output/raw/<task>/<method>.csv`
+- `aggregate` outputs: `output/summary/<task>.csv`, `output/env/<task>.json`
 
 ## 4. Failure Strategy
 - Invalid config structure: fail fast

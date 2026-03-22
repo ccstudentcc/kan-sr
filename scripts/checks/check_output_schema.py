@@ -13,62 +13,28 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence, Set
 
+if __package__ in {None, ""}:
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    repo_root_str = str(REPO_ROOT)
+    if repo_root_str not in sys.path:
+        sys.path.insert(0, repo_root_str)
 
-PLAN_REQUIRED_FIELDS: Set[str] = {
-    "run_id",
-    "task_name",
-    "method",
-    "seed",
-    "split_seed",
-    "train_num",
-    "test_num",
-    "budget_time_seconds",
-}
+try:
+    from .common import latest_plan_json
+except ImportError:  # pragma: no cover - direct script execution path
+    from common import latest_plan_json
+from scripts.experiment.shared.contracts import (
+    ALLOWED_STATUS,
+    ENV_REQUIRED_FIELDS,
+    PLAN_REQUIRED_FIELDS,
+    RAW_OUTPUT_FIELDS,
+    SUMMARY_OUTPUT_FIELDS,
+)
 
-RAW_REQUIRED_FIELDS: Set[str] = {
-    "run_id",
-    "is_simulated",
-    "task_name",
-    "method",
-    "seed",
-    "mse",
-    "r2",
-    "time_seconds",
-    "expression",
-    "complexity",
-    "status",
-    "error_message",
-}
-
-SUMMARY_REQUIRED_FIELDS: Set[str] = {
-    "run_id",
-    "is_simulated",
-    "task_name",
-    "method",
-    "n_repeats",
-    "mse_mean",
-    "mse_std",
-    "r2_mean",
-    "r2_std",
-    "time_mean",
-    "time_std",
-    "success_rate",
-}
-
-ALLOWED_STATUS = {"success", "fail"}
-ENV_REQUIRED_FIELDS: Set[str] = {
-    "schema_version",
-    "task_name",
-    "run_id",
-    "run_ids",
-    "generated_at_utc",
-    "python_version",
-    "platform",
-    "is_simulated",
-    "methods",
-    "n_methods",
-    "raw_files",
-}
+PLAN_REQUIRED_FIELDS_SET: Set[str] = set(PLAN_REQUIRED_FIELDS)
+RAW_REQUIRED_FIELDS: Set[str] = set(RAW_OUTPUT_FIELDS)
+SUMMARY_REQUIRED_FIELDS: Set[str] = set(SUMMARY_OUTPUT_FIELDS)
+ENV_REQUIRED_FIELDS_SET: Set[str] = set(ENV_REQUIRED_FIELDS)
 
 
 def parse_args() -> argparse.Namespace:
@@ -148,17 +114,6 @@ def require_non_empty(files: Iterable[Path], label: str, errors: list[str]) -> l
     if not collected:
         errors.append(f"{label}: no files found")
     return collected
-
-
-def latest_plan_json(output_root: Path) -> Optional[Path]:
-    """Return latest plan JSON path under output root."""
-    plan_dir = output_root / "plan"
-    candidates = list(plan_dir.glob("*_plan.json")) if plan_dir.exists() else []
-    if not candidates:
-        candidates = list(output_root.glob("*_plan.json"))
-    if not candidates:
-        return None
-    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
 def parse_float(
@@ -292,20 +247,8 @@ def load_json(path: Path, errors: list[str]) -> Optional[Any]:
         return None
 
 
-def validate_env_json(path: Path, errors: list[str]) -> None:
-    """Validate one env JSON artifact."""
-    payload = load_json(path, errors)
-    if payload is None:
-        return
-    if not isinstance(payload, dict):
-        errors.append(f"{path}: env payload must be a JSON object")
-        return
-
-    missing = sorted(ENV_REQUIRED_FIELDS - set(payload.keys()))
-    if missing:
-        errors.append(f"{path}: missing required env fields: {', '.join(missing)}")
-        return
-
+def validate_env_identity(path: Path, payload: dict[str, Any], errors: list[str]) -> None:
+    """Validate env identity fields and naming constraints."""
     filename_task = path.stem
     task_name = str(payload.get("task_name", "")).strip()
     if not task_name:
@@ -327,6 +270,9 @@ def validate_env_json(path: Path, errors: list[str]) -> None:
     if run_id and run_ids and run_id not in run_ids:
         errors.append(f"{path}: run_id must be included in run_ids")
 
+
+def validate_env_runtime_metadata(path: Path, payload: dict[str, Any], errors: list[str]) -> None:
+    """Validate env runtime metadata fields."""
     generated_at = str(payload.get("generated_at_utc", "")).strip()
     if not generated_at:
         errors.append(f"{path}: generated_at_utc must be non-empty")
@@ -343,6 +289,9 @@ def validate_env_json(path: Path, errors: list[str]) -> None:
     if is_simulated is None:
         errors.append(f"{path}: is_simulated must be true/false")
 
+
+def validate_env_method_metadata(path: Path, payload: dict[str, Any], errors: list[str]) -> None:
+    """Validate env method list and count fields."""
     methods = payload.get("methods")
     if not isinstance(methods, list) or not all(
         isinstance(item, str) and item.strip() for item in methods
@@ -355,11 +304,34 @@ def validate_env_json(path: Path, errors: list[str]) -> None:
     elif isinstance(methods, list) and n_methods != len(methods):
         errors.append(f"{path}: n_methods must equal len(methods)")
 
+
+def validate_env_raw_files(path: Path, payload: dict[str, Any], errors: list[str]) -> None:
+    """Validate env raw file list fields."""
     raw_files = payload.get("raw_files")
     if not isinstance(raw_files, list) or not all(
         isinstance(item, str) and item.strip() for item in raw_files
     ):
         errors.append(f"{path}: raw_files must be a non-empty string list")
+
+
+def validate_env_json(path: Path, errors: list[str]) -> None:
+    """Validate one env JSON artifact."""
+    payload = load_json(path, errors)
+    if payload is None:
+        return
+    if not isinstance(payload, dict):
+        errors.append(f"{path}: env payload must be a JSON object")
+        return
+
+    missing = sorted(ENV_REQUIRED_FIELDS_SET - set(payload.keys()))
+    if missing:
+        errors.append(f"{path}: missing required env fields: {', '.join(missing)}")
+        return
+
+    validate_env_identity(path, payload, errors)
+    validate_env_runtime_metadata(path, payload, errors)
+    validate_env_method_metadata(path, payload, errors)
+    validate_env_raw_files(path, payload, errors)
 
 
 def main() -> int:
@@ -391,9 +363,9 @@ def main() -> int:
     env_json_files = require_non_empty(env_dir.rglob("*.json"), "env json", errors)
 
     for path in plan_csv_files:
-        validate_csv_header(path, PLAN_REQUIRED_FIELDS, errors)
+        validate_csv_header(path, PLAN_REQUIRED_FIELDS_SET, errors)
     for path in plan_json_files:
-        validate_plan_json(path, PLAN_REQUIRED_FIELDS, errors)
+        validate_plan_json(path, PLAN_REQUIRED_FIELDS_SET, errors)
     for path in raw_csv_files:
         validate_csv_header(path, RAW_REQUIRED_FIELDS, errors)
         _, rows = read_csv_dict_rows(path)

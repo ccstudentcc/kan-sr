@@ -26,6 +26,7 @@
   - 方法适配器：`scripts/experiment/execution/adapters.py`
   - 计划/结果 I/O：`scripts/experiment/execution/io.py`
   - 运行时模型：`scripts/experiment/execution/models.py`
+- 兼容要求：入口命令需同时支持 `python scripts/*.py` 与 `python -m scripts.*`
 - 作用：按计划逐行执行方法适配器并输出 raw 结果
 - 产物：`output/raw/<task>/<method>.csv`
 - 当前状态：`kan`、`gplearn`、`bms`、`qlattice` 均为真实训练与评估路径
@@ -40,6 +41,7 @@
 ### 1.4 Shared 公共层
 - 配置读写与深合并：`scripts/experiment/shared/config.py`
 - 跨阶段常量：`scripts/experiment/shared/constants.py`
+- 产物字段契约：`scripts/experiment/shared/contracts.py`
 
 ## 2. 适用方法
 - `kan`

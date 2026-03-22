@@ -5,15 +5,14 @@ from __future__ import annotations
 import random
 import re
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
-import pandas as pd
-import sympy as sp
-from sklearn.metrics import mean_squared_error, r2_score
 
 _SAFE_EXPR_MAX_LEN = 1024
 _SAFE_EXPR_ALLOWED = re.compile(r"^[A-Za-z0-9_+\-*/^().,\s]+$")
+AdapterOutput = Tuple[float, float, float, str, int]
+AdapterFunc = Callable[..., AdapterOutput]
 
 
 def execute_gplearn(
@@ -26,6 +25,7 @@ def execute_gplearn(
 ) -> Tuple[float, float, float, str, int]:
     """Train and evaluate one gplearn run."""
     from gplearn.genetic import SymbolicRegressor
+    from sklearn.metrics import mean_squared_error, r2_score
 
     started = time.perf_counter()
     model = SymbolicRegressor(**params)
@@ -81,6 +81,7 @@ def execute_kan(
     """Train and evaluate one KAN run using pykan."""
     import torch
     from kan import KAN
+    from sklearn.metrics import mean_squared_error, r2_score
 
     width = params.get("width", [x_train.shape[1], 1])
     grid = int(params.get("grid", 3))
@@ -179,6 +180,8 @@ def _is_safe_expression_text(expr: str) -> bool:
 
 def count_expression_complexity(expr: str) -> int:
     """Count expression complexity as SymPy node count."""
+    import sympy as sp
+
     if not _is_safe_expression_text(expr):
         return 1
     try:
@@ -186,7 +189,7 @@ def count_expression_complexity(expr: str) -> int:
     except Exception:  # noqa: BLE001
         return 1
 
-    def _count_nodes(e: sp.Basic) -> int:
+    def _count_nodes(e: Any) -> int:
         if e.is_Atom:
             return 1
         return 1 + sum(_count_nodes(arg) for arg in e.args)
@@ -204,6 +207,7 @@ def execute_bms(
 ) -> Tuple[float, float, float, str, int]:
     """Train and evaluate one BMS run."""
     from autora.theorist.bms import BMSRegressor
+    from sklearn.metrics import mean_squared_error, r2_score
 
     seed = int(params.get("seed", 0))
     epochs = int(params.get("epochs", 200))
@@ -240,6 +244,8 @@ def execute_qlattice(
 ) -> Tuple[float, float, float, str, int]:
     """Train and evaluate one QLattice run."""
     import feyn
+    import pandas as pd
+    from sklearn.metrics import mean_squared_error, r2_score
 
     n_var = x_train.shape[1]
     feature_names = resolve_feature_names(n_var, params)
@@ -286,3 +292,16 @@ def execute_qlattice(
     expression = str(expression_obj)
     complexity = count_expression_complexity(expression)
     return mse, r2, elapsed, expression, complexity
+
+
+ADAPTER_REGISTRY: Dict[str, AdapterFunc] = {
+    "gplearn": execute_gplearn,
+    "kan": execute_kan,
+    "bms": execute_bms,
+    "qlattice": execute_qlattice,
+}
+
+
+def get_method_adapter(method: str) -> AdapterFunc | None:
+    """Return adapter function for a method name."""
+    return ADAPTER_REGISTRY.get(method)

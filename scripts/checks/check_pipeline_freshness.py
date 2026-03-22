@@ -17,6 +17,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
+try:
+    from .common import latest_plan_json
+except ImportError:  # pragma: no cover - direct script execution path
+    from common import latest_plan_json
+
 
 @dataclass(frozen=True)
 class TaskArtifacts:
@@ -56,17 +61,6 @@ def parse_args() -> argparse.Namespace:
 def to_iso(path: Path) -> str:
     """Format file mtime as ISO string for diagnostics."""
     return datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds")
-
-
-def latest_plan_json(output_root: Path) -> Optional[Path]:
-    """Return latest plan JSON under output root, or None if absent."""
-    plan_dir = output_root / "plan"
-    candidates = list(plan_dir.glob("*_plan.json")) if plan_dir.exists() else []
-    if not candidates:
-        candidates = list(output_root.glob("*_plan.json"))
-    if not candidates:
-        return None
-    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
 def load_plan_tasks(plan_json: Path) -> List[str]:
