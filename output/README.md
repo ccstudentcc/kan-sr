@@ -1,7 +1,8 @@
 # output
 
 实验输出目录：
-- `*_plan.json/csv`
+- `plan/*_plan.json`
+- `plan/*_plan.csv`
 - `raw/`
 - `summary/`
 - `env/`

@@ -28,10 +28,18 @@ Required fields:
 - `mse_mean/std`, `r2_mean/std`
 - `time_mean/std`, `success_rate`
 
-## 5. Unified Naming Rules
+## 5. Env Fields (Implemented)
+Required fields:
+- `schema_version`, `task_name`
+- `run_id`, `run_ids`
+- `generated_at_utc`, `python_version`, `platform`
+- `is_simulated`, `methods`, `n_methods`
+- `raw_files`
+
+## 6. Unified Naming Rules
 - Current configuration uses `train_num/test_num`; if external documents use `train_size/test_size`, treat them as synonymous mappings.
 - New internal repository specifications must uniformly use `train_num/test_num`.
 
-## 6. Compatibility and Changes
+## 7. Compatibility and Changes
 - New fields should be backward compatible (nullable by default)
 - Deleting or renaming fields is a breaking change and requires protocol updates plus migration notes

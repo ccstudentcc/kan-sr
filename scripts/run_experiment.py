@@ -1,9 +1,24 @@
+"""Execute run stage from a generated plan and emit raw per-method CSV outputs.
+
+Current implementation:
+- real adapters: gplearn, kan
+- explicit fail adapters: bms / qlattice
+"""
+
+from __future__ import annotations
+
 import argparse
+import copy
 import csv
-import hashlib
 import json
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+import numpy as np
+import yaml
+from sklearn.metrics import mean_squared_error, r2_score
 
 REQUIRED_OUTPUT_FIELDS = [
     "run_id",
@@ -20,11 +35,27 @@ REQUIRED_OUTPUT_FIELDS = [
     "error_message",
 ]
 
+SUPPORTED_TASK_GENERATORS = {"quadratic", "sin_exp"}
+SUPPORTED_METHODS = {"kan", "gplearn", "bms", "qlattice"}
+
+
+@dataclass(frozen=True)
+class TaskRuntimeConfig:
+    """Runtime task config resolved from task YAML."""
+
+    task_name: str
+    generator: str
+    n_var: int
+    ranges: Tuple[float, float]
+    noise_enabled: bool
+    noise_std: float
+    methods: Dict[str, Dict[str, Any]]
+
 
 def parse_args() -> argparse.Namespace:
-    """Parse CLI arguments for the placeholder run executor."""
+    """Parse CLI arguments for run executor."""
     parser = argparse.ArgumentParser(
-        description="Execute a placeholder run stage from a plan file and emit raw outputs."
+        description="Execute run stage from a plan file and emit raw outputs."
     )
     parser.add_argument(
         "--plan",
@@ -43,6 +74,28 @@ def parse_args() -> argparse.Namespace:
         help="Root output directory where raw results are written.",
     )
     return parser.parse_args()
+
+
+def load_yaml(path: Path) -> Dict[str, Any]:
+    """Load YAML file as dict."""
+    with path.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError(f"YAML root must be mapping: {path}")
+    return data
+
+
+def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively deep merge mapping values."""
+    merged = copy.deepcopy(base)
+    for key, value in override.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
 
 
 def load_plan(plan_path: Path) -> List[Dict[str, Any]]:
@@ -73,12 +126,23 @@ def load_plan(plan_path: Path) -> List[Dict[str, Any]]:
     raise ValueError(f"Unsupported plan file type: {plan_path.suffix}")
 
 
-def stable_random_01(*parts: Any) -> float:
-    """Create a deterministic pseudo-random value in [0, 1)."""
-    key = "|".join(str(p) for p in parts)
-    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
-    value = int(digest[:12], 16)
-    return value / float(16**12)
+def parse_positive_int(value: Any, field_name: str) -> int:
+    """Parse positive integer value."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} must be int, got: {value}") from exc
+    if parsed <= 0:
+        raise ValueError(f"{field_name} must be > 0, got: {parsed}")
+    return parsed
+
+
+def parse_seed(value: Any) -> int:
+    """Parse seed as int."""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"seed must be int, got: {value}") from exc
 
 
 def resolve_run_id(plan_row: Dict[str, Any], fallback: str) -> str:
@@ -87,58 +151,380 @@ def resolve_run_id(plan_row: Dict[str, Any], fallback: str) -> str:
     return run_id or fallback
 
 
-def simulate_row(plan_row: Dict[str, Any], default_run_id: str) -> Dict[str, Any]:
-    """Simulate one execution row from one plan row.
-
-    Args:
-        plan_row: One row from the plan file.
-
-    Returns:
-        A normalized output row matching REQUIRED_OUTPUT_FIELDS.
-    """
-    task_name = str(plan_row.get("task_name", "unknown_task"))
-    method = str(plan_row.get("method", "unknown_method"))
-    run_id = resolve_run_id(plan_row, fallback=default_run_id)
-    seed_raw = plan_row.get("seed", "")
-
+def parse_ranges(raw_ranges: Any) -> Tuple[float, float]:
+    """Parse data range from config value."""
     try:
-        seed = int(seed_raw)
-    except (TypeError, ValueError):
-        return {
-            "run_id": run_id,
-            "is_simulated": "true",
-            "task_name": task_name,
-            "method": method,
-            "seed": seed_raw,
-            "mse": "",
-            "r2": "",
-            "time_seconds": "",
-            "expression": "",
-            "complexity": "",
-            "status": "fail",
-            "error_message": f"Invalid seed value: {seed_raw}",
+        if isinstance(raw_ranges, str):
+            values = json.loads(raw_ranges)
+        else:
+            values = raw_ranges
+        if not isinstance(values, list) or len(values) != 2:
+            raise ValueError
+        low = float(values[0])
+        high = float(values[1])
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid data range: {raw_ranges}") from exc
+    if not low < high:
+        raise ValueError(f"range lower bound must be < upper bound: {raw_ranges}")
+    return low, high
+
+
+def find_task_config_path(task_name: str, tasks_dir: Path = Path("configs/tasks")) -> Path:
+    """Find task yaml path by matching task.name."""
+    for task_path in sorted(tasks_dir.glob("*.yaml")):
+        task_cfg = load_yaml(task_path)
+        cfg_task_name = str(task_cfg.get("task", {}).get("name", "")).strip()
+        if cfg_task_name == task_name:
+            return task_path
+    raise FileNotFoundError(f"Task config not found for task_name: {task_name}")
+
+
+def resolve_task_runtime_config(task_name: str) -> TaskRuntimeConfig:
+    """Resolve runtime task config by deep merging base+task YAML."""
+    base_cfg = load_yaml(Path("configs/base.yaml"))
+    task_cfg = load_yaml(find_task_config_path(task_name))
+    merged = deep_merge(base_cfg, task_cfg)
+    data_cfg = merged.get("data", {})
+    generator = str(data_cfg.get("generator", "")).strip()
+    if generator not in SUPPORTED_TASK_GENERATORS:
+        raise ValueError(f"unsupported generator '{generator}' for task '{task_name}'")
+    n_var = parse_positive_int(data_cfg.get("n_var"), "data.n_var")
+    ranges = parse_ranges(data_cfg.get("ranges"))
+    noise_cfg = data_cfg.get("noise", {})
+    noise_enabled = bool(noise_cfg.get("enabled", False))
+    noise_std = float(noise_cfg.get("std", 0.0))
+    methods_cfg = merged.get("methods", {})
+    methods = {
+        method_name: dict(methods_cfg.get(method_name, {}).get("params", {}))
+        for method_name in SUPPORTED_METHODS
+    }
+    return TaskRuntimeConfig(
+        task_name=task_name,
+        generator=generator,
+        n_var=n_var,
+        ranges=ranges,
+        noise_enabled=noise_enabled,
+        noise_std=noise_std,
+        methods=methods,
+    )
+
+
+def generate_targets(generator: str, x_data: np.ndarray) -> np.ndarray:
+    """Generate target values by task generator."""
+    if generator == "quadratic":
+        x = x_data[:, 0]
+        return x**2 + x + 1.0
+    if generator == "sin_exp":
+        x1 = x_data[:, 0]
+        x2 = x_data[:, 1]
+        return x2 * np.exp(np.sin(np.pi * x1) + x1**2)
+    raise ValueError(f"unsupported generator: {generator}")
+
+
+def generate_dataset(
+    *,
+    task_cfg: TaskRuntimeConfig,
+    seed: int,
+    train_num: int,
+    test_num: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Generate deterministic train/test dataset for one run."""
+    low, high = task_cfg.ranges
+    rng = np.random.default_rng(seed)
+    x_train = rng.uniform(low=low, high=high, size=(train_num, task_cfg.n_var))
+    x_test = rng.uniform(low=low, high=high, size=(test_num, task_cfg.n_var))
+    y_train = generate_targets(task_cfg.generator, x_train)
+    y_test = generate_targets(task_cfg.generator, x_test)
+
+    if task_cfg.noise_enabled and task_cfg.noise_std > 0:
+        y_train = y_train + rng.normal(loc=0.0, scale=task_cfg.noise_std, size=train_num)
+    return x_train, y_train, x_test, y_test
+
+
+def normalize_method_params(
+    method: str, default_params: Dict[str, Any], budget_raw: str, seed: int
+) -> Dict[str, Any]:
+    """Prepare method params from config and plan budget caps."""
+    params = copy.deepcopy(default_params)
+    try:
+        budget_cap = json.loads(str(budget_raw)) if str(budget_raw).strip() else {}
+    except json.JSONDecodeError:
+        budget_cap = {}
+
+    if method == "gplearn":
+        params.pop("random_state_from_run_seed", None)
+        if "generations_cap" in budget_cap:
+            params["generations"] = int(budget_cap["generations_cap"])
+        params["random_state"] = seed
+        metric = str(params.get("metric", "mse")).strip().lower()
+        params["metric"] = "mse" if metric in {"mse", "mean_squared_error"} else metric
+        return params
+
+    if method == "kan":
+        params["seed"] = seed
+        if "fit_steps_cap" in budget_cap:
+            params["fit_steps_cap"] = int(budget_cap["fit_steps_cap"])
+    return params
+
+
+def execute_gplearn(
+    *,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: Dict[str, Any],
+) -> Tuple[float, float, float, str, int]:
+    """Train and evaluate one gplearn run."""
+    from gplearn.genetic import SymbolicRegressor
+
+    started = time.perf_counter()
+    model = SymbolicRegressor(**params)
+    model.fit(x_train, y_train)
+    y_pred = model.predict(x_test)
+    elapsed = time.perf_counter() - started
+    mse = float(mean_squared_error(y_test, y_pred))
+    r2 = float(r2_score(y_test, y_pred))
+    expression = str(model._program) if getattr(model, "_program", None) is not None else ""
+    complexity = int(getattr(model._program, "length_", 0)) if getattr(model, "_program", None) is not None else 0
+    return mse, r2, elapsed, expression, complexity
+
+
+def normalize_kan_fit_stages(kan_params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Build normalized fit stages from KAN params."""
+    raw_stages = kan_params.get("fit_stages", [])
+    stages: List[Dict[str, Any]] = []
+    if isinstance(raw_stages, list) and raw_stages:
+        for stage in raw_stages:
+            if isinstance(stage, dict):
+                stages.append(dict(stage))
+    if stages:
+        return stages
+    return [{"opt": "LBFGS", "steps": 20, "lamb": 0.001, "lamb_entropy": 4.0}]
+
+
+def apply_kan_fit_step_cap(stages: List[Dict[str, Any]], fit_steps_cap: int | None) -> List[Dict[str, Any]]:
+    """Apply optional global fit-step cap across all stages."""
+    if fit_steps_cap is None or fit_steps_cap <= 0:
+        return stages
+
+    remaining = fit_steps_cap
+    capped_stages: List[Dict[str, Any]] = []
+    for stage in stages:
+        if remaining <= 0:
+            break
+        stage_copy = dict(stage)
+        stage_steps = int(stage_copy.get("steps", 20))
+        stage_copy["steps"] = max(1, min(stage_steps, remaining))
+        remaining -= int(stage_copy["steps"])
+        capped_stages.append(stage_copy)
+    return capped_stages
+
+
+def execute_kan(
+    *,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    params: Dict[str, Any],
+) -> Tuple[float, float, float, str, int]:
+    """Train and evaluate one KAN run using pykan."""
+    import torch
+    from kan import KAN
+
+    width = params.get("width", [x_train.shape[1], 1])
+    grid = int(params.get("grid", 3))
+    k = int(params.get("k", 3))
+    seed = int(params.get("seed", 0))
+    fit_steps_cap_raw = params.get("fit_steps_cap")
+    fit_steps_cap = int(fit_steps_cap_raw) if fit_steps_cap_raw is not None else None
+    stages = apply_kan_fit_step_cap(normalize_kan_fit_stages(params), fit_steps_cap)
+    symbolic_cfg = params.get("symbolic", {})
+    enable_auto_symbolic = bool(symbolic_cfg.get("enable_auto_symbolic", False))
+
+    dataset = {
+        "train_input": torch.tensor(x_train, dtype=torch.float32),
+        "train_label": torch.tensor(y_train.reshape(-1, 1), dtype=torch.float32),
+        "test_input": torch.tensor(x_test, dtype=torch.float32),
+        "test_label": torch.tensor(y_test.reshape(-1, 1), dtype=torch.float32),
+    }
+
+    model = KAN(
+        width=width,
+        grid=grid,
+        k=k,
+        seed=seed,
+        device="cpu",
+        auto_save=False,
+    )
+    started = time.perf_counter()
+    for stage in stages:
+        fit_kwargs = {
+            "opt": stage.get("opt", "LBFGS"),
+            "steps": int(stage.get("steps", 20)),
+            "lamb": float(stage.get("lamb", 0.001)),
+            "lamb_entropy": float(stage.get("lamb_entropy", 4.0)),
+            "log": max(1, int(stage.get("log", 1))),
         }
+        optional_keys = [
+            "batch",
+            "lr",
+            "lamb_l1",
+            "lamb_coef",
+            "lamb_coefdiff",
+            "update_grid",
+            "grid_update_num",
+            "start_grid_update_step",
+            "stop_grid_update_step",
+        ]
+        for key in optional_keys:
+            if key in stage:
+                fit_kwargs[key] = stage[key]
+        model.fit(dataset, **fit_kwargs)
 
-    rand_a = stable_random_01(task_name, method, seed, "mse")
-    rand_b = stable_random_01(task_name, method, seed, "r2")
-    rand_c = stable_random_01(task_name, method, seed, "time")
-    rand_d = stable_random_01(task_name, method, seed, "complexity")
+    with torch.no_grad():
+        y_pred = model(dataset["test_input"]).detach().cpu().numpy().reshape(-1)
+    elapsed = time.perf_counter() - started
+    mse = float(mean_squared_error(y_test, y_pred))
+    r2 = float(r2_score(y_test, y_pred))
+    complexity = int(sum(parameter.numel() for parameter in model.parameters()))
 
-    mse = 0.001 + rand_a * 0.099
-    r2 = 0.80 + rand_b * 0.199
-    time_seconds = 0.05 + rand_c * 0.45
-    complexity = 5 + int(rand_d * 46)
-    expression = f"{method}_placeholder_expr_seed_{seed}"
+    expression = f"kan_numeric(width={width},grid={grid},k={k})"
+    if enable_auto_symbolic:
+        try:
+            model.auto_symbolic(verbose=0)
+            formula_tuple = model.symbolic_formula()
+            formula_list = formula_tuple[0] if isinstance(formula_tuple, tuple) else formula_tuple
+            if isinstance(formula_list, list) and formula_list:
+                expression = str(formula_list[0])
+        except Exception:  # noqa: BLE001
+            expression = expression
 
+    return mse, r2, elapsed, expression, complexity
+
+
+def fail_row(
+    *,
+    run_id: str,
+    task_name: str,
+    method: str,
+    seed: Any,
+    error_message: str,
+) -> Dict[str, Any]:
+    """Build standardized failed row."""
     return {
         "run_id": run_id,
-        "is_simulated": "true",
+        "is_simulated": "false",
         "task_name": task_name,
         "method": method,
         "seed": seed,
-        "mse": f"{mse:.6f}",
-        "r2": f"{r2:.6f}",
-        "time_seconds": f"{time_seconds:.6f}",
+        "mse": "",
+        "r2": "",
+        "time_seconds": "",
+        "expression": "",
+        "complexity": "",
+        "status": "fail",
+        "error_message": error_message,
+    }
+
+
+def execute_row(
+    plan_row: Dict[str, Any],
+    *,
+    default_run_id: str,
+    task_cache: Dict[str, TaskRuntimeConfig],
+) -> Dict[str, Any]:
+    """Execute one plan row and map to raw schema row."""
+    task_name = str(plan_row.get("task_name", "unknown_task")).strip() or "unknown_task"
+    method = str(plan_row.get("method", "unknown_method")).strip() or "unknown_method"
+    run_id = resolve_run_id(plan_row, fallback=default_run_id)
+
+    if method not in SUPPORTED_METHODS:
+        return fail_row(
+            run_id=run_id,
+            task_name=task_name,
+            method=method,
+            seed=plan_row.get("seed", ""),
+            error_message=f"unsupported method: {method}",
+        )
+
+    try:
+        seed = parse_seed(plan_row.get("seed"))
+        train_num = parse_positive_int(plan_row.get("train_num"), "train_num")
+        test_num = parse_positive_int(plan_row.get("test_num"), "test_num")
+    except ValueError as exc:
+        return fail_row(
+            run_id=run_id,
+            task_name=task_name,
+            method=method,
+            seed=plan_row.get("seed", ""),
+            error_message=str(exc),
+        )
+
+    try:
+        task_cfg = task_cache.get(task_name)
+        if task_cfg is None:
+            task_cfg = resolve_task_runtime_config(task_name)
+            task_cache[task_name] = task_cfg
+    except (FileNotFoundError, ValueError) as exc:
+        return fail_row(
+            run_id=run_id,
+            task_name=task_name,
+            method=method,
+            seed=seed,
+            error_message=str(exc),
+        )
+
+    try:
+        x_train, y_train, x_test, y_test = generate_dataset(
+            task_cfg=task_cfg,
+            seed=seed,
+            train_num=train_num,
+            test_num=test_num,
+        )
+        params = normalize_method_params(
+            method,
+            default_params=task_cfg.methods.get(method, {}),
+            budget_raw=str(plan_row.get("budget_method_cap", "")),
+            seed=seed,
+        )
+        if method == "gplearn":
+            mse, r2, elapsed, expression, complexity = execute_gplearn(
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+                params=params,
+            )
+        elif method == "kan":
+            mse, r2, elapsed, expression, complexity = execute_kan(
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+                params=params,
+            )
+        else:
+            raise NotImplementedError(f"method adapter not implemented yet: {method}")
+    except Exception as exc:  # noqa: BLE001
+        return fail_row(
+            run_id=run_id,
+            task_name=task_name,
+            method=method,
+            seed=seed,
+            error_message=f"{type(exc).__name__}: {exc}",
+        )
+
+    return {
+        "run_id": run_id,
+        "is_simulated": "false",
+        "task_name": task_name,
+        "method": method,
+        "seed": seed,
+        "mse": f"{mse:.10g}",
+        "r2": f"{r2:.10g}",
+        "time_seconds": f"{elapsed:.10g}",
         "expression": expression,
         "complexity": complexity,
         "status": "success",
@@ -178,11 +564,15 @@ def write_grouped_raw(rows: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
 
 
 def main() -> None:
-    """Entry point for placeholder run execution."""
+    """Entry point for run execution."""
     args = parse_args()
     plan_rows = load_plan(args.plan)
     default_run_id = args.plan.stem.replace("_plan", "")
-    output_rows = [simulate_row(row, default_run_id=default_run_id) for row in plan_rows]
+    task_cache: Dict[str, TaskRuntimeConfig] = {}
+    output_rows = [
+        execute_row(row, default_run_id=default_run_id, task_cache=task_cache)
+        for row in plan_rows
+    ]
     paths = write_grouped_raw(output_rows, args.out_dir)
 
     print(f"[OK] Processed plan rows: {len(plan_rows)}")

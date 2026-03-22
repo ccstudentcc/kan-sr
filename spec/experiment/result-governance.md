@@ -2,8 +2,8 @@
 
 ## 1. Output Directory Convention
 - All outputs must be written to `output/`, with the recommended structure:
-  - `output/<timestamp>_plan.json`
-  - `output/<timestamp>_plan.csv`
+  - `output/plan/<timestamp>_plan.json`
+  - `output/plan/<timestamp>_plan.csv`
   - `output/raw/<task>/<method>.csv`
   - `output/summary/<task>.csv`
   - `output/env/<task>.json`

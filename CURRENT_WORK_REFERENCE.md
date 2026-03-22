@@ -128,9 +128,9 @@
 - `docs/` 主语言限定为中文
 - 新增自动检查脚本：`scripts/checks/check_language_policy.py`
 
-3. 实验流水线从“仅计划”升级为“计划 -> 原始结果 -> 汇总”：
+3. 实验流水线从“仅计划”升级为“计划 -> 原始结果 -> 汇总 + 环境清单”：
 - 计划生成：`scripts/run_experiment_plan.py`
-- 占位执行器：`scripts/run_experiment.py`（可复现模拟指标，后续可替换真实训练）
+- 执行器：`scripts/run_experiment.py`（`kan`、`gplearn` 已接入真实训练；`bms/qlattice` 当前为显式失败映射）
 - 结果汇总：`scripts/summarize_results.py`
 - 输出结构校验：`scripts/checks/check_output_schema.py`
 - 覆盖一致性校验：`scripts/checks/check_plan_coverage.py`
@@ -141,14 +141,15 @@
 
 4. 当前阶段性结论（用于论文表述）：
 - 已具备可执行、可检查、可汇总的实验流水线骨架。
-- 真实训练执行器尚未接入（目前 run 阶段为占位模拟），但接口与产物协议已稳定。
+- 已具备 `output/env/<task>.json` 级别的运行环境与追溯元数据产物。
+- 已完成两条真实训练路径（`kan`、`gplearn`），其他方法仍需逐步补齐适配器。
 - 下一步重点应转向“真实训练接线 + 指标可信度验证 + 多任务批量复现实验”。
 
 ## 10. 证据链最小复现命令（Traceability）
 
 ```bash
 python scripts/run_experiment_plan.py --base-config configs/base.yaml --task-config configs/tasks/univariate_quadratic.yaml --output-root output
-python scripts/run_experiment.py --plan-json output/<timestamp>_plan.json --output-root output
+python scripts/run_experiment.py --plan-json output/plan/<timestamp>_plan.json --output-root output
 python scripts/summarize_results.py --output-root output
 python scripts/checks/check_language_policy.py
 python scripts/checks/check_output_schema.py --output-root output --allow-placeholder
@@ -161,11 +162,12 @@ python scripts/run_checks.py --output-root output --allow-placeholder
 ```
 
 关键产物路径：
-- `output/<timestamp>_plan.json`
-- `output/<timestamp>_plan.csv`
+- `output/plan/<timestamp>_plan.json`
+- `output/plan/<timestamp>_plan.csv`
 - `output/raw/<task>/<method>.csv`
 - `output/summary/<task>.csv`
+- `output/env/<task>.json`
 
 ---
 
-最后更新：2026-03-20
+最后更新：2026-03-22

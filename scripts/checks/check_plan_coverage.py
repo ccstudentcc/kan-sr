@@ -27,14 +27,17 @@ def parse_args() -> argparse.Namespace:
         "--plan-json",
         type=Path,
         default=None,
-        help="Optional explicit plan JSON. Defaults to latest *_plan.json under output root.",
+        help="Optional explicit plan JSON. Defaults to latest plan under output/plan or output root.",
     )
     return parser.parse_args()
 
 
 def latest_plan_json(output_root: Path) -> Optional[Path]:
     """Return latest plan JSON path."""
-    candidates = list(output_root.glob("*_plan.json"))
+    plan_dir = output_root / "plan"
+    candidates = list(plan_dir.glob("*_plan.json")) if plan_dir.exists() else []
+    if not candidates:
+        candidates = list(output_root.glob("*_plan.json"))
     if not candidates:
         return None
     return max(candidates, key=lambda p: p.stat().st_mtime)

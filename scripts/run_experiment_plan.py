@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple
 import yaml
 
 SUPPORTED_METHODS = {"kan", "gplearn", "bms", "qlattice"}
+PLAN_DIRNAME = "plan"
 
 
 def load_yaml(path: Path) -> Dict[str, Any]:
@@ -124,11 +125,28 @@ def build_run_plan(
     return plan
 
 
+def migrate_legacy_plan_files(out_dir: Path) -> List[Path]:
+    """Move legacy top-level plan files to output/plan directory."""
+    plan_dir = out_dir / PLAN_DIRNAME
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    moved: List[Path] = []
+    for pattern in ("*_plan.json", "*_plan.csv"):
+        for legacy_path in sorted(out_dir.glob(pattern)):
+            target = plan_dir / legacy_path.name
+            if target.exists():
+                continue
+            legacy_path.replace(target)
+            moved.append(target)
+    return moved
+
+
 def save_plan(plan: List[Dict[str, Any]], out_dir: Path, run_id: str) -> Dict[str, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
+    plan_dir = out_dir / PLAN_DIRNAME
+    plan_dir.mkdir(parents=True, exist_ok=True)
 
-    json_path = out_dir / f"{run_id}_plan.json"
-    csv_path = out_dir / f"{run_id}_plan.csv"
+    json_path = plan_dir / f"{run_id}_plan.json"
+    csv_path = plan_dir / f"{run_id}_plan.csv"
 
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(plan, f, ensure_ascii=False, indent=2)
@@ -187,11 +205,14 @@ def main() -> None:
         repeats = args.repeats
 
     validate_config(cfg)
+    moved_legacy = migrate_legacy_plan_files(args.out_dir)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     plan = build_run_plan(cfg, methods=methods, repeats=repeats, run_id=run_id)
     paths = save_plan(plan, args.out_dir, run_id)
 
     print(f"[OK] Built run plan with {len(plan)} runs")
+    if moved_legacy:
+        print(f"[OK] Migrated legacy plan files: {len(moved_legacy)}")
     print(f"[OK] JSON: {paths['json']}")
     print(f"[OK] CSV : {paths['csv']}")
 

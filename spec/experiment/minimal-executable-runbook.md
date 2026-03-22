@@ -20,8 +20,8 @@ python scripts\run_experiment_plan.py --task configs\tasks\multivariate_sinexp.y
 ```
 
 ## 5. Expected Artifacts
-- `output/<timestamp>_plan.json`
-- `output/<timestamp>_plan.csv`
+- `output/plan/<timestamp>_plan.json`
+- `output/plan/<timestamp>_plan.csv`
 
 ## 6. Quick Acceptance
 - Exit code is `0`

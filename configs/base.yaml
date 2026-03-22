@@ -5,7 +5,7 @@ project:
 
 reproducibility:
   # 统一随机种子列表；每个方法都必须逐个运行
-  seed_list: [42, 43, 44, 45, 46]
+  seed_list: [42, 43, 44]
   set_python_random: true
   set_numpy_random: true
   set_torch_random: true
@@ -13,7 +13,7 @@ reproducibility:
 
 experiment:
   # 最少重复次数，建议保持与 seed_list 长度一致
-  n_repeats: 5
+  n_repeats: 3
   save_config_snapshot: true
   fail_fast: false
 

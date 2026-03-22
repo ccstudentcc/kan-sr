@@ -21,7 +21,7 @@
 ## 5. Gate Severity Levels
 - P0 (blocking):
   - Plan command exit code must be `0`
-  - `*_plan.json` and `*_plan.csv` must be generated
+  - `output/plan/*_plan.json` and `output/plan/*_plan.csv` must be generated
   - `plan row count = n_repeats * methods_count`
   - `plan.csv` must include key fields (`task_name/method/seed/split_seed/train_num/test_num/budget_time_seconds`)
 - P1 (warning):

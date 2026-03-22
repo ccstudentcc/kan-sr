@@ -1,4 +1,4 @@
-"""Validate required output schemas for plan, raw, and summary artifacts.
+"""Validate required output schemas for plan, raw, summary, and env artifacts.
 
 Usage:
     python scripts/checks/check_output_schema.py --output-root output
@@ -11,7 +11,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Set
+from typing import Any, Iterable, Optional, Sequence, Set
 
 
 PLAN_REQUIRED_FIELDS: Set[str] = {
@@ -56,6 +56,19 @@ SUMMARY_REQUIRED_FIELDS: Set[str] = {
 }
 
 ALLOWED_STATUS = {"success", "fail"}
+ENV_REQUIRED_FIELDS: Set[str] = {
+    "schema_version",
+    "task_name",
+    "run_id",
+    "run_ids",
+    "generated_at_utc",
+    "python_version",
+    "platform",
+    "is_simulated",
+    "methods",
+    "n_methods",
+    "raw_files",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -139,7 +152,10 @@ def require_non_empty(files: Iterable[Path], label: str, errors: list[str]) -> l
 
 def latest_plan_json(output_root: Path) -> Optional[Path]:
     """Return latest plan JSON path under output root."""
-    candidates = list(output_root.glob("*_plan.json"))
+    plan_dir = output_root / "plan"
+    candidates = list(plan_dir.glob("*_plan.json")) if plan_dir.exists() else []
+    if not candidates:
+        candidates = list(output_root.glob("*_plan.json"))
     if not candidates:
         return None
     return max(candidates, key=lambda p: p.stat().st_mtime)
@@ -267,6 +283,85 @@ def check_placeholder_policy(
                 )
 
 
+def load_json(path: Path, errors: list[str]) -> Optional[Any]:
+    """Load JSON from file and collect decode errors."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        errors.append(f"{path}: invalid JSON ({exc})")
+        return None
+
+
+def validate_env_json(path: Path, errors: list[str]) -> None:
+    """Validate one env JSON artifact."""
+    payload = load_json(path, errors)
+    if payload is None:
+        return
+    if not isinstance(payload, dict):
+        errors.append(f"{path}: env payload must be a JSON object")
+        return
+
+    missing = sorted(ENV_REQUIRED_FIELDS - set(payload.keys()))
+    if missing:
+        errors.append(f"{path}: missing required env fields: {', '.join(missing)}")
+        return
+
+    filename_task = path.stem
+    task_name = str(payload.get("task_name", "")).strip()
+    if not task_name:
+        errors.append(f"{path}: task_name must be non-empty")
+    elif task_name != filename_task:
+        errors.append(f"{path}: task_name '{task_name}' must match filename '{filename_task}'")
+
+    schema_version = str(payload.get("schema_version", "")).strip()
+    if schema_version != "v1":
+        errors.append(f"{path}: schema_version must be 'v1'")
+
+    run_ids = payload.get("run_ids")
+    if not isinstance(run_ids, list) or not all(
+        isinstance(item, str) and item.strip() for item in run_ids
+    ):
+        errors.append(f"{path}: run_ids must be a non-empty string list")
+
+    run_id = str(payload.get("run_id", "")).strip()
+    if run_id and run_ids and run_id not in run_ids:
+        errors.append(f"{path}: run_id must be included in run_ids")
+
+    generated_at = str(payload.get("generated_at_utc", "")).strip()
+    if not generated_at:
+        errors.append(f"{path}: generated_at_utc must be non-empty")
+
+    python_version = str(payload.get("python_version", "")).strip()
+    if not python_version:
+        errors.append(f"{path}: python_version must be non-empty")
+
+    platform_name = str(payload.get("platform", "")).strip()
+    if not platform_name:
+        errors.append(f"{path}: platform must be non-empty")
+
+    is_simulated = parse_bool_string(payload.get("is_simulated", ""))
+    if is_simulated is None:
+        errors.append(f"{path}: is_simulated must be true/false")
+
+    methods = payload.get("methods")
+    if not isinstance(methods, list) or not all(
+        isinstance(item, str) and item.strip() for item in methods
+    ):
+        errors.append(f"{path}: methods must be a non-empty string list")
+
+    n_methods = payload.get("n_methods")
+    if not isinstance(n_methods, int) or n_methods < 0:
+        errors.append(f"{path}: n_methods must be a non-negative int")
+    elif isinstance(methods, list) and n_methods != len(methods):
+        errors.append(f"{path}: n_methods must equal len(methods)")
+
+    raw_files = payload.get("raw_files")
+    if not isinstance(raw_files, list) or not all(
+        isinstance(item, str) and item.strip() for item in raw_files
+    ):
+        errors.append(f"{path}: raw_files must be a non-empty string list")
+
+
 def main() -> int:
     """Run schema checks and return process exit code."""
     args = parse_args()
@@ -284,14 +379,16 @@ def main() -> int:
         plan_csv_files: list[Path] = []
     else:
         plan_json_files = [latest_plan]
-        latest_csv = root / f"{latest_plan.stem}.csv"
+        latest_csv = latest_plan.with_suffix(".csv")
         plan_csv_files = [latest_csv] if latest_csv.exists() else []
         if not plan_csv_files:
             errors.append(f"plan csv: matching csv not found for {latest_plan.name}")
     raw_dir = root / "raw"
     summary_dir = root / "summary"
+    env_dir = root / "env"
     raw_csv_files = require_non_empty(raw_dir.rglob("*.csv"), "raw csv", errors)
     summary_csv_files = require_non_empty(summary_dir.rglob("*.csv"), "summary csv", errors)
+    env_json_files = require_non_empty(env_dir.rglob("*.json"), "env json", errors)
 
     for path in plan_csv_files:
         validate_csv_header(path, PLAN_REQUIRED_FIELDS, errors)
@@ -305,6 +402,16 @@ def main() -> int:
         validate_csv_header(path, SUMMARY_REQUIRED_FIELDS, errors)
         _, rows = read_csv_dict_rows(path)
         validate_summary_rows(path, rows, errors)
+    for path in env_json_files:
+        validate_env_json(path, errors)
+
+    summary_tasks = {path.stem for path in summary_csv_files}
+    env_tasks = {path.stem for path in env_json_files}
+    missing_env_tasks = sorted(summary_tasks - env_tasks)
+    if missing_env_tasks:
+        errors.append(
+            f"env json: missing task env files for summary tasks: {', '.join(missing_env_tasks)}"
+        )
 
     check_placeholder_policy(raw_csv_files + summary_csv_files, errors, allow_placeholder=args.allow_placeholder)
 

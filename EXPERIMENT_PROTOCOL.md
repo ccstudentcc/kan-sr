@@ -15,19 +15,19 @@
 ### 1.1 Plan 阶段（已实现）
 - 实现入口：`scripts/run_experiment_plan.py`
 - 作用：读取 `base + task` 配置并生成运行计划
-- 产物：`output/*_plan.json`、`output/*_plan.csv`
+- 产物：`output/plan/*_plan.json`、`output/plan/*_plan.csv`
 
-### 1.2 Run 阶段（已实现最小占位执行器）
+### 1.2 Run 阶段（已实现真实执行骨架）
 - 实现入口：`scripts/run_experiment.py`
-- 作用：按计划逐行执行占位流程（当前为可复现模拟指标，用于打通流水线）
+- 作用：按计划逐行执行方法适配器并输出 raw 结果
 - 产物：`output/raw/<task>/<method>.csv`
-- 说明：后续可在不改产物协议的前提下替换为真实训练执行逻辑
+- 当前状态：`kan`、`gplearn` 为真实训练与评估路径；`bms/qlattice` 暂为显式失败映射（不再伪造成功）
 
-### 1.3 Report 阶段（已实现 summary，env 待补齐）
+### 1.3 Report 阶段（已实现 summary + env）
 - 实现入口：`scripts/summarize_results.py`
 - 作用：按任务聚合 `raw` 结果并输出方法级统计
 - 已实现产物：`output/summary/<task>.csv`
-- 待补齐产物：`output/env/<task>.json`
+- 已实现产物：`output/env/<task>.json`
 
 ## 2. 适用方法
 - `kan`
@@ -60,6 +60,7 @@
 ### 4.2 Run/Report 字段（目标）
 - raw：`mse`、`r2`、`time_seconds`、`expression`、`complexity`、`status`、`error_message`
 - summary：`mse_mean/std`、`r2_mean/std`、`time_mean/std`、`success_rate`
+- env：`schema_version`、`task_name`、`run_id`、`run_ids`、`generated_at_utc`、`python_version`、`platform`、`is_simulated`、`methods`、`n_methods`、`raw_files`
 
 ## 5. 命名统一
 - 协议统一使用 `train_num/test_num`
@@ -72,17 +73,18 @@
 - 字段完整且命名一致
 - 失败可见，不允许静默跳过
 - `python scripts/checks/check_language_policy.py` 通过
-- `python scripts/checks/check_output_schema.py --output-root output --allow-placeholder` 通过（占位结果阶段）
+- `python scripts/checks/check_output_schema.py --output-root output --allow-placeholder` 通过（当前阶段）
 - `python scripts/checks/check_doc_sync.py` 通过
 - `python scripts/checks/check_pipeline_freshness.py --output-root output` 通过
 - `python scripts/checks/check_plan_coverage.py --output-root output` 通过
 - `python scripts/checks/check_result_traceability.py` 通过
 - `python scripts/checks/check_required_updates.py` 通过
-- `python scripts/run_checks.py --output-root output --allow-placeholder` 通过（占位结果阶段）
+- `output/env/<task>.json` 存在且与 summary 任务一一对应
+- `python scripts/run_checks.py --output-root output --allow-placeholder` 通过（当前阶段）
 
 ## 7. 目录规范说明
 - 结果目录统一为 `output/`
 - 历史 `results/` 目录视为 legacy 资产，迁移前保持只读，避免破坏可追溯性
 
 ---
-最后更新：2026-03-20
+最后更新：2026-03-22

@@ -16,7 +16,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import platform
+import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean, stdev
 from typing import Dict, Iterable, List, Tuple
@@ -69,6 +73,12 @@ def parse_args() -> argparse.Namespace:
         default=Path("output/summary"),
         help="Output directory for per-task summary CSV files.",
     )
+    parser.add_argument(
+        "--env-root",
+        type=Path,
+        default=Path("output/env"),
+        help="Output directory for per-task environment JSON files.",
+    )
     return parser.parse_args()
 
 
@@ -93,7 +103,7 @@ def safe_float(value: str) -> float | None:
 def calc_mean_std(values: List[float]) -> Tuple[str, str]:
     """Return mean/std as fixed-point strings for a numeric list."""
     if not values:
-        return "", ""
+        return "", "0"
     if len(values) == 1:
         return f"{values[0]:.10g}", "0"
     return f"{mean(values):.10g}", f"{stdev(values):.10g}"
@@ -173,14 +183,61 @@ def write_summary_csv(path: Path, rows: List[Dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def write_env_json(
+    path: Path,
+    *,
+    task_name: str,
+    summary_rows: List[Dict[str, str]],
+    raw_csv_files: List[Path],
+) -> None:
+    """Write per-task environment and traceability metadata as JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    run_ids = sorted(
+        {
+            str(row.get("run_id", "")).strip()
+            for row in summary_rows
+            if str(row.get("run_id", "")).strip()
+        }
+    )
+    methods = sorted(
+        {
+            str(row.get("method", "")).strip()
+            for row in summary_rows
+            if str(row.get("method", "")).strip()
+        }
+    )
+    is_simulated_values = {
+        str(row.get("is_simulated", "")).strip().lower()
+        for row in summary_rows
+        if row.get("is_simulated") is not None
+    }
+
+    payload = {
+        "schema_version": "v1",
+        "task_name": task_name,
+        "run_id": run_ids[0] if len(run_ids) == 1 else "",
+        "run_ids": run_ids,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "python_version": sys.version.split()[0],
+        "platform": platform.platform(),
+        "is_simulated": "true" if "true" in is_simulated_values else "false",
+        "methods": methods,
+        "n_methods": len(methods),
+        "raw_files": [str(path_item).replace("\\", "/") for path_item in sorted(raw_csv_files)],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main() -> None:
     """Run aggregation for all tasks under raw root."""
     args = parse_args()
     raw_root: Path = args.raw_root
     summary_root: Path = args.summary_root
+    env_root: Path = args.env_root
     if args.output_root is not None:
         raw_root = args.output_root / "raw"
         summary_root = args.output_root / "summary"
+        env_root = args.output_root / "env"
 
     task_to_files: Dict[str, List[Path]] = defaultdict(list)
     for task_name, csv_path in iter_task_raw_files(raw_root):
@@ -196,9 +253,17 @@ def main() -> None:
         rows = aggregate_task(task_to_files[task_name], fallback_task_name=task_name)
         out_path = summary_root / f"{task_name}.csv"
         write_summary_csv(out_path, rows)
+        env_path = env_root / f"{task_name}.json"
+        write_env_json(
+            env_path,
+            task_name=task_name,
+            summary_rows=rows,
+            raw_csv_files=task_to_files[task_name],
+        )
         total_tasks += 1
         total_rows += len(rows)
         print(f"[OK] Wrote summary: {out_path} ({len(rows)} methods)")
+        print(f"[OK] Wrote env: {env_path}")
 
     print(f"[OK] Aggregated {total_rows} method summaries across {total_tasks} tasks")
 
