@@ -132,6 +132,11 @@
 - 计划生成：`scripts/run_experiment_plan.py`
 - 执行器：`scripts/run_experiment.py`（`kan`、`gplearn`、`bms`、`qlattice` 均已接入真实训练）
 - 结果汇总：`scripts/summarize_results.py`
+- 脚本分层：以上 3 个入口保持不变，核心实现已归类到 `scripts/experiment/` 子目录
+  - `planning/`：实验计划生成
+  - `execution/`：执行编排、适配器、I/O、运行时
+  - `reporting/`：汇总与环境元数据输出
+  - `shared/`：配置与常量复用
 - 输出结构校验：`scripts/checks/check_output_schema.py`
 - 覆盖一致性校验：`scripts/checks/check_plan_coverage.py`
 - 时序新鲜度校验：`scripts/checks/check_pipeline_freshness.py`

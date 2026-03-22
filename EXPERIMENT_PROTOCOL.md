@@ -14,20 +14,32 @@
 
 ### 1.1 Plan 阶段（已实现）
 - 实现入口：`scripts/run_experiment_plan.py`
+- 结构说明：入口脚本为兼容层，核心实现位于 `scripts/experiment/planning/plan_builder.py`
 - 作用：读取 `base + task` 配置并生成运行计划
 - 产物：`output/plan/*_plan.json`、`output/plan/*_plan.csv`
 
 ### 1.2 Run 阶段（已实现真实执行）
 - 实现入口：`scripts/run_experiment.py`
+- 结构说明：入口脚本为兼容层，核心实现位于 `scripts/experiment/execution/app.py`
+- 执行内部模块：
+  - 运行时与数据生成：`scripts/experiment/execution/runtime.py`
+  - 方法适配器：`scripts/experiment/execution/adapters.py`
+  - 计划/结果 I/O：`scripts/experiment/execution/io.py`
+  - 运行时模型：`scripts/experiment/execution/models.py`
 - 作用：按计划逐行执行方法适配器并输出 raw 结果
 - 产物：`output/raw/<task>/<method>.csv`
 - 当前状态：`kan`、`gplearn`、`bms`、`qlattice` 均为真实训练与评估路径
 
 ### 1.3 Report 阶段（已实现 summary + env）
 - 实现入口：`scripts/summarize_results.py`
+- 结构说明：入口脚本为兼容层，核心实现位于 `scripts/experiment/reporting/summarizer.py`
 - 作用：按任务聚合 `raw` 结果并输出方法级统计
 - 已实现产物：`output/summary/<task>.csv`
 - 已实现产物：`output/env/<task>.json`
+
+### 1.4 Shared 公共层
+- 配置读写与深合并：`scripts/experiment/shared/config.py`
+- 跨阶段常量：`scripts/experiment/shared/constants.py`
 
 ## 2. 适用方法
 - `kan`

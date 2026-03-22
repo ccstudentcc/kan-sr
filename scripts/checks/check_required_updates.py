@@ -29,7 +29,11 @@ class UpdateRule:
 RULES: List[UpdateRule] = [
     UpdateRule(
         name="execution scripts -> protocol and status docs",
-        trigger_globs=["scripts/run_*.py", "scripts/summarize_*.py"],
+        trigger_globs=[
+            "scripts/run_*.py",
+            "scripts/summarize_*.py",
+            "scripts/experiment/*.py",
+        ],
         required_files=["EXPERIMENT_PROTOCOL.md", "CURRENT_WORK_REFERENCE.md"],
     ),
 ]
