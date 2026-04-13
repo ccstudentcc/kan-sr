@@ -30,6 +30,7 @@
 - 作用：按计划逐行执行方法适配器并输出 raw 结果
 - 产物：`output/raw/<task>/<method>.csv`
 - 当前状态：`kan`、`gplearn`、`bms`、`qlattice` 均为真实训练与评估路径
+- 运行可观测性：执行器按 plan 行输出 `[RUN]/[DONE]` 进度日志，并在每行完成后增量落盘 raw 结果（不再仅在全部结束后统一写盘）
 
 ### 1.3 Report 阶段（已实现 summary + env）
 - 实现入口：`scripts/summarize_results.py`
@@ -63,6 +64,7 @@
 ### 3.3 预算规则
 - 优先使用统一时间预算 `time_budget_seconds`
 - 方法私有预算通过 `budget.per_method` 映射，不允许隐式加码
+- 当前实现说明：`time_budget_seconds` 目前作为计划与审计字段；实际运行主要通过各方法 `budget.per_method` 的 cap 参数控制（如 `generations_cap`、`fit_steps_cap`），暂未对单方法做强制超时中断
 
 ## 4. 字段契约
 

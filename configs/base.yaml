@@ -104,5 +104,6 @@ methods:
   qlattice:
     framework: feyn_qlattice
     params:
-      n_models_to_eval: 10
-      random_seed_from_run_seed: true
+      n_epochs: 20
+      n_models_to_eval: 1
+      random_seed_from_run_seed: false

@@ -187,15 +187,28 @@ def main() -> None:
     plan_rows = load_plan(args.plan)
     default_run_id = args.plan.stem.replace("_plan", "")
     task_cache: Dict[str, TaskRuntimeConfig] = {}
-    output_rows = [
-        execute_row(row, default_run_id=default_run_id, task_cache=task_cache)
-        for row in plan_rows
-    ]
-    paths = write_grouped_raw(output_rows, args.out_dir)
+    output_rows: list[Dict[str, Any]] = []
+    total = len(plan_rows)
+    written_paths: list[Path] = []
 
-    print(f"[OK] Processed plan rows: {len(plan_rows)}")
-    print(f"[OK] Written raw files: {len(paths)}")
-    for path in paths:
+    for index, row in enumerate(plan_rows, start=1):
+        task_name, method, run_id = parse_plan_row_identity(row, default_run_id=default_run_id)
+        seed = row.get("seed", "")
+        print(f"[RUN] ({index}/{total}) run_id={run_id} task={task_name} method={method} seed={seed}")
+
+        result = execute_row(row, default_run_id=default_run_id, task_cache=task_cache)
+        output_rows.append(result)
+        written_paths = write_grouped_raw(output_rows, args.out_dir)
+
+        status = str(result.get("status", "unknown"))
+        elapsed = str(result.get("time_seconds", "")).strip() or "-"
+        print(f"[DONE] ({index}/{total}) task={task_name} method={method} status={status} time_seconds={elapsed}")
+        if status != "success":
+            print(f"[WARN] ({index}/{total}) error={result.get('error_message', '')}")
+
+    print(f"[OK] Processed plan rows: {total}")
+    print(f"[OK] Written raw files: {len(written_paths)}")
+    for path in written_paths:
         print(f"[OK] RAW: {path}")
 
 

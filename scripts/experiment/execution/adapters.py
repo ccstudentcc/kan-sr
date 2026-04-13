@@ -15,6 +15,51 @@ AdapterOutput = Tuple[float, float, float, str, int]
 AdapterFunc = Callable[..., AdapterOutput]
 
 
+def _assert_all_finite(values: np.ndarray, name: str) -> None:
+    """Raise ValueError when array contains NaN or Inf."""
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"{name} contains NaN or Inf")
+
+
+def _build_gplearn_function_set(raw_function_set: Any) -> Any:
+    """Build gplearn function set, mapping unsupported exp to protected custom exp."""
+    if not isinstance(raw_function_set, (list, tuple)):
+        return raw_function_set
+
+    from gplearn.functions import make_function
+
+    def _protected_exp(x: np.ndarray) -> np.ndarray:
+        # Match notebook behavior to keep search space and scale consistent.
+        with np.errstate(over="ignore", invalid="ignore"):
+            values = np.exp(x)
+        values = np.where(values > 10.0, 10.0, values)
+        values = np.where(values < 0.1, 0.1, values)
+        return values
+
+    protected_exp = make_function(function=_protected_exp, name="exp", arity=1)
+    mapped = []
+    for item in raw_function_set:
+        if isinstance(item, str) and item.strip().lower() == "exp":
+            mapped.append(protected_exp)
+        else:
+            mapped.append(item)
+    return mapped
+
+
+def normalize_kan_width(raw_width: Any, n_var: int) -> List[int]:
+    """Normalize KAN width spec into a plain integer layer-width list."""
+    if not isinstance(raw_width, (list, tuple)) or not raw_width:
+        return [n_var, 1]
+
+    normalized: List[int] = []
+    for item in raw_width:
+        if isinstance(item, (list, tuple)) and item:
+            normalized.append(int(item[0]))
+        else:
+            normalized.append(int(item))
+    return normalized
+
+
 def execute_gplearn(
     *,
     x_train: np.ndarray,
@@ -27,10 +72,28 @@ def execute_gplearn(
     from gplearn.genetic import SymbolicRegressor
     from sklearn.metrics import mean_squared_error, r2_score
 
+    _assert_all_finite(x_train, "x_train")
+    _assert_all_finite(y_train, "y_train")
+    _assert_all_finite(x_test, "x_test")
+    _assert_all_finite(y_test, "y_test")
+
+    model_params = dict(params)
+    if "function_set" in model_params:
+        model_params["function_set"] = _build_gplearn_function_set(model_params.get("function_set"))
+
     started = time.perf_counter()
-    model = SymbolicRegressor(**params)
-    model.fit(x_train, y_train)
+    model = SymbolicRegressor(**model_params)
+    try:
+        model.fit(x_train, y_train)
+    except PermissionError:
+        if int(model_params.get("n_jobs", 1)) == 1:
+            raise
+        retry_params = dict(model_params)
+        retry_params["n_jobs"] = 1
+        model = SymbolicRegressor(**retry_params)
+        model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
+    _assert_all_finite(y_pred, "gplearn prediction")
     elapsed = time.perf_counter() - started
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
@@ -83,7 +146,13 @@ def execute_kan(
     from kan import KAN
     from sklearn.metrics import mean_squared_error, r2_score
 
-    width = params.get("width", [x_train.shape[1], 1])
+    _assert_all_finite(x_train, "x_train")
+    _assert_all_finite(y_train, "y_train")
+    _assert_all_finite(x_test, "x_test")
+    _assert_all_finite(y_test, "y_test")
+
+    width = normalize_kan_width(params.get("width"), x_train.shape[1])
+    width_repr = list(width)
     grid = int(params.get("grid", 3))
     k = int(params.get("k", 3))
     seed = int(params.get("seed", 0))
@@ -101,7 +170,7 @@ def execute_kan(
     }
 
     model = KAN(
-        width=width,
+        width=list(width),
         grid=grid,
         k=k,
         seed=seed,
@@ -135,11 +204,12 @@ def execute_kan(
 
     with torch.no_grad():
         y_pred = model(dataset["test_input"]).detach().cpu().numpy().reshape(-1)
+    _assert_all_finite(y_pred, "kan prediction")
     elapsed = time.perf_counter() - started
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
 
-    expression = f"kan_numeric(width={width},grid={grid},k={k})"
+    expression = f"kan_numeric(width={width_repr},grid={grid},k={k})"
     if enable_auto_symbolic:
         try:
             model.auto_symbolic(verbose=0)
@@ -209,6 +279,11 @@ def execute_bms(
     from autora.theorist.bms import BMSRegressor
     from sklearn.metrics import mean_squared_error, r2_score
 
+    _assert_all_finite(x_train, "x_train")
+    _assert_all_finite(y_train, "y_train")
+    _assert_all_finite(x_test, "x_test")
+    _assert_all_finite(y_test, "y_test")
+
     seed = int(params.get("seed", 0))
     epochs = int(params.get("epochs", 200))
     ts = params.get("ts")
@@ -223,6 +298,7 @@ def execute_bms(
     model = BMSRegressor(**model_kwargs)
     model.fit(x_train, y_train)
     y_pred = np.asarray(model.predict(x_test)).reshape(-1)
+    _assert_all_finite(y_pred, "bms prediction")
     elapsed = time.perf_counter() - started
 
     mse = float(mean_squared_error(y_test, y_pred))
@@ -247,21 +323,42 @@ def execute_qlattice(
     import pandas as pd
     from sklearn.metrics import mean_squared_error, r2_score
 
+    _assert_all_finite(x_train, "x_train")
+    _assert_all_finite(y_train, "y_train")
+    _assert_all_finite(x_test, "x_test")
+    _assert_all_finite(y_test, "y_test")
+
+    def _to_float64_1d(values: np.ndarray) -> np.ndarray:
+        return np.asarray(values, dtype=np.float64).reshape(-1)
+
     n_var = x_train.shape[1]
     feature_names = resolve_feature_names(n_var, params)
     target_name = str(params.get("target", "y")).strip() or "y"
-    n_epochs = int(params.get("n_epochs", 10))
-    n_models_to_eval = int(params.get("n_models_to_eval", 10))
-    random_seed_from_run_seed = bool(params.get("random_seed_from_run_seed", True))
+    n_epochs = int(params.get("n_epochs", 20))
+    n_models_to_eval = int(params.get("n_models_to_eval", 1))
+    random_seed_from_run_seed = bool(params.get("random_seed_from_run_seed", False))
     seed = int(params.get("seed", 0))
 
-    train_frame = pd.DataFrame(x_train, columns=feature_names)
-    train_frame[target_name] = y_train
-    test_frame = pd.DataFrame(x_test, columns=feature_names)
+    train_frame = pd.DataFrame(
+        {
+            name: _to_float64_1d(x_train[:, i])
+            for i, name in enumerate(feature_names)
+        }
+    )
+    train_frame[target_name] = _to_float64_1d(y_train)
+    test_frame = pd.DataFrame(
+        {
+            name: _to_float64_1d(x_test[:, i])
+            for i, name in enumerate(feature_names)
+        }
+    )
 
-    ql_seed = seed if random_seed_from_run_seed else -1
     started = time.perf_counter()
-    qlattice = feyn.QLattice(random_seed=ql_seed)
+    if random_seed_from_run_seed:
+        qlattice = feyn.QLattice(random_seed=seed)
+    else:
+        # Keep parity with notebook logic: ql = feyn.QLattice()
+        qlattice = feyn.QLattice()
     candidates = qlattice.auto_run(
         train_frame,
         output_name=target_name,
@@ -271,24 +368,17 @@ def execute_qlattice(
         raise RuntimeError("QLattice returned no candidate models")
 
     usable = candidates[: max(1, n_models_to_eval)]
-    best_model = None
-    best_mse = None
-    for candidate in usable:
-        pred = np.asarray(candidate.predict(test_frame)).reshape(-1)
-        candidate_mse = float(mean_squared_error(y_test, pred))
-        if best_mse is None or candidate_mse < best_mse:
-            best_mse = candidate_mse
-            best_model = candidate
+    # Keep parity with notebook logic: qlattice_models[0].fit(data)
+    selected_model = usable[0]
+    selected_model.fit(train_frame)
 
-    if best_model is None:
-        raise RuntimeError("QLattice failed to select best model")
-
-    y_pred = np.asarray(best_model.predict(test_frame)).reshape(-1)
+    y_pred = np.asarray(selected_model.predict(test_frame)).reshape(-1)
+    _assert_all_finite(y_pred, "qlattice best prediction")
     elapsed = time.perf_counter() - started
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
 
-    expression_obj = best_model.sympify(signif=6)
+    expression_obj = selected_model.sympify(signif=2)
     expression = str(expression_obj)
     complexity = count_expression_complexity(expression)
     return mse, r2, elapsed, expression, complexity

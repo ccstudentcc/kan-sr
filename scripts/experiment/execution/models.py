@@ -16,4 +16,6 @@ class TaskRuntimeConfig:
     ranges: Tuple[float, float]
     noise_enabled: bool
     noise_std: float
+    normalize_input: bool
+    normalize_label: bool
     methods: Dict[str, Dict[str, Any]]

@@ -209,6 +209,24 @@
 - 多变量任务中出现 `Intel MKL ERROR` 与 `lstsq failed` 运行信息
 - 当前策略：保持失败可见并纳入回归记录，后续单独针对多变量稳定性做参数与数值策略优化
 
+## 14. 多变量任务再次审查与修复（2026-03-22）
+
+1. 根因审查结论（对齐 notebook）：
+- `notebooks/Comparison_of_different_methods_for_SR_multivariate.ipynb` 中多变量目标为 `y = sin(x1^2) + exp(x2/4) + 1`
+- 脚本原先 `sin_exp` 目标实现与 notebook 不一致，导致任务难度与分布偏移，训练表现和 notebook 预期出现明显偏差
+
+2. 已实施修复：
+- `scripts/experiment/execution/runtime.py`：`sin_exp` 目标函数改为 notebook 同款公式
+- `configs/tasks/multivariate_sinexp.yaml`：任务描述同步改为 notebook 公式
+- `scripts/experiment/execution/adapters.py`：`gplearn` 的 `exp` 保护函数改为 notebook 同口径输出裁剪（`[0.1, 10]`）
+- `scripts/experiment/execution/app.py`：执行器改为逐行输出进度并增量写入 raw 文件，避免长任务期间“看起来无结果”
+- `tests/test_runtime_generators.py`：新增生成器回归测试，锁定 `sin_exp` 公式，防止后续漂移
+
+3. 本轮关键运行记录：
+- `multivariate_sinexp` 完整 run_id：`20260322_201359`（`kan/gplearn/bms/qlattice` 全部 `success`）
+- 主要耗时分布：`gplearn ~644s`、`kan ~307s`、`bms ~110s`、`qlattice ~75s`
+- 结论：十几分钟无结果的主要体感原因是 `gplearn` 计算负载较高，非卡死；现已通过进度日志和增量落盘提升可观测性
+
 ## 10. 证据链最小复现命令（Traceability）
 
 ```bash

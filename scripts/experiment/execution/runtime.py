@@ -81,6 +81,8 @@ def resolve_task_runtime_config(task_name: str) -> TaskRuntimeConfig:
     noise_cfg = data_cfg.get("noise", {})
     noise_enabled = bool(noise_cfg.get("enabled", False))
     noise_std = float(noise_cfg.get("std", 0.0))
+    normalize_input = bool(data_cfg.get("normalize_input", False))
+    normalize_label = bool(data_cfg.get("normalize_label", False))
     methods_cfg = merged.get("methods", {})
     methods = {
         method_name: dict(methods_cfg.get(method_name, {}).get("params", {}))
@@ -93,6 +95,8 @@ def resolve_task_runtime_config(task_name: str) -> TaskRuntimeConfig:
         ranges=ranges,
         noise_enabled=noise_enabled,
         noise_std=noise_std,
+        normalize_input=normalize_input,
+        normalize_label=normalize_label,
         methods=methods,
     )
 
@@ -105,7 +109,9 @@ def generate_targets(generator: str, x_data: np.ndarray) -> np.ndarray:
     if generator == "sin_exp":
         x1 = x_data[:, 0]
         x2 = x_data[:, 1]
-        return x2 * np.exp(np.sin(np.pi * x1) + x1**2)
+        # Keep this aligned with notebook:
+        # y = sin(x1^2) + exp(x2/4) + 1
+        return np.sin(x1**2) + np.exp(x2 / 4.0) + 1.0
     raise ValueError(f"unsupported generator: {generator}")
 
 
@@ -126,6 +132,21 @@ def generate_dataset(
 
     if task_cfg.noise_enabled and task_cfg.noise_std > 0:
         y_train = y_train + rng.normal(loc=0.0, scale=task_cfg.noise_std, size=train_num)
+
+    if task_cfg.normalize_input:
+        x_mean = np.mean(x_train, axis=0)
+        x_std = np.std(x_train, axis=0, ddof=1)
+        x_std = np.where(np.isfinite(x_std) & (x_std > 0), x_std, 1.0)
+        x_train = (x_train - x_mean) / x_std
+        x_test = (x_test - x_mean) / x_std
+
+    if task_cfg.normalize_label:
+        y_mean = float(np.mean(y_train))
+        y_std = float(np.std(y_train, ddof=1))
+        y_std = y_std if np.isfinite(y_std) and y_std > 0 else 1.0
+        y_train = (y_train - y_mean) / y_std
+        y_test = (y_test - y_mean) / y_std
+
     return x_train, y_train, x_test, y_test
 
 
@@ -143,6 +164,9 @@ def normalize_method_params(
         params.pop("random_state_from_run_seed", None)
         if "generations_cap" in budget_cap:
             params["generations"] = int(budget_cap["generations_cap"])
+        init_depth = params.get("init_depth")
+        if isinstance(init_depth, list) and len(init_depth) == 2:
+            params["init_depth"] = (int(init_depth[0]), int(init_depth[1]))
         params["random_state"] = seed
         metric = str(params.get("metric", "mse")).strip().lower()
         params["metric"] = "mse" if metric in {"mse", "mean_squared_error"} else metric

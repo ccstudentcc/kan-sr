@@ -1,6 +1,7 @@
 /.venv
 .vscode
 /figures
+**/figures
 /__pycache__
 **/__pycache__/
 *.py[cod]
